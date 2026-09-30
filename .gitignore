@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 로컬 업로드 파일 / 환경변수 ###
+storage/
+.env
