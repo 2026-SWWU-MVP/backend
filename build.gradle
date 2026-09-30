@@ -21,10 +21,26 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // 비밀번호 해싱 (BCrypt만 사용, Spring Security 아님)
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    // 시험범위 PDF 텍스트 추출 / 시험지 PDF 출력
+    implementation 'org.apache.pdfbox:pdfbox:3.0.8'
+    implementation 'io.github.openhtmltopdf:openhtmltopdf-pdfbox:1.1.87'
+
+    // API 문서 (Swagger UI)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testRuntimeOnly 'com.h2database:h2'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
