@@ -1,0 +1,53 @@
+{
+  "passages": [
+    {
+      "id": "P1",
+      "title": "Bringing New Life to Old Cities",
+      "text": "As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. When this happens, a collaboration between the local government and citizens is an effective way to revitalize the area."
+    },
+    {
+      "id": "P2",
+      "title": null,
+      "text": "For years, the neighborhood was known for its high crime rates. Many apartments ①[were] abandoned and then ②[taking] over by people who lived in them illegally. At first, the local government thought that the best solution ③[was] simply to tear the building down. However, ④[having] a limited budget, the government was unable to do so and had to come up with a new plan, ⑤[which] was to sell the empty apartments for one euro each."
+    }
+  ],
+  "questions": [
+    {
+      "no": 1,
+      "section": "OBJECTIVE",
+      "type": "OBJ_GRAMMAR",
+      "passageIds": ["P2"],
+      "stem": "다음 글의 밑줄 친 부분 중, 어법상 틀린 것은?",
+      "body": null,
+      "conditions": [],
+      "choices": ["were", "taking", "was", "having", "which"],
+      "answer": null,
+      "points": 3.5
+    },
+    {
+      "no": 1,
+      "section": "SUBJECTIVE",
+      "type": "SUMMARY_BLANK",
+      "passageIds": ["P1"],
+      "stem": "윗글의 내용을 요약할 때, 빈칸 (1), (2)에 들어갈 말을 쓰시오.",
+      "body": "As a neighborhood ages, it may become (1) __________ and lose residents. Cooperation between the local government and citizens can help (2) __________ the area.",
+      "conditions": ["각 빈칸에 한 단어씩 쓸 것.", "윗글에 나온 단어를 형태 변경 없이 쓸 것."],
+      "choices": [],
+      "answer": "(1) lifeless (2) revitalize",
+      "points": 4.0
+    },
+    {
+      "no": 2,
+      "section": "SUBJECTIVE",
+      "type": "SENTENCE_ORDER",
+      "passageIds": ["P2"],
+      "stem": "윗글에 나온 문장이 되도록 [보기]의 어구를 배열하시오.",
+      "body": null,
+      "conditions": ["[보기]의 모든 어구를 한 번씩 사용할 것.", "단어를 추가하거나 형태를 바꾸지 말 것.", "쉼표와 마침표를 알맞게 쓸 것."],
+      "choices": ["to do so", "a limited budget", "the government", "However", "and had to come up with", "having", "was unable", "a new plan"],
+      "answer": null,
+      "points": 5.0
+    }
+  ],
+  "warnings": []
+}

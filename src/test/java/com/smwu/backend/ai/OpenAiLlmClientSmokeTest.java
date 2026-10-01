@@ -5,10 +5,9 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -25,10 +24,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 실제 OpenAI API를 호출하는 확인용 테스트. LLM_API_KEY와 LLM_MODEL 환경변수가 있을 때만 실행된다 (비용 발생).
  * <pre>
- * ./gradlew test --tests '*OpenAiLlmClientSmokeTest' -i   (.env에 LLM_API_KEY, LLM_MODEL 설정)
+ * ./gradlew llmTest --tests '*OpenAiLlmClientSmokeTest'   (.env에 LLM_API_KEY, LLM_MODEL 설정)
  * </pre>
  * 보낸 PDF와 받은 결과는 {@code build/smoke/}에 저장된다 (input.pdf, result.json).
  */
+@Tag("llm")
 @EnabledIfEnvironmentVariable(named = "LLM_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "LLM_MODEL", matches = ".+")
 class OpenAiLlmClientSmokeTest {
@@ -42,9 +42,7 @@ class OpenAiLlmClientSmokeTest {
 
     @Test
     void PDF를_읽고_스키마에_맞는_JSON을_돌려준다() throws IOException {
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
-        requestFactory.setReadTimeout(Duration.ofSeconds(120));
-        LlmClient client = new OpenAiLlmClient(RestClient.builder().requestFactory(requestFactory), objectMapper,
+        LlmClient client = new OpenAiLlmClient(OpenAiLlmClient.restClientBuilder(Duration.ofSeconds(120)), objectMapper,
                 System.getenv().getOrDefault("LLM_BASE_URL", "https://api.openai.com/v1"),
                 System.getenv("LLM_API_KEY"), System.getenv("LLM_MODEL"), Duration.ofSeconds(2));
 

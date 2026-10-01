@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["passages", "questions", "warnings"],
+  "properties": {
+    "passages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "text"],
+        "properties": {
+          "id": { "type": "string", "description": "P1, P2 ... 시험지에 처음 나오는 순서" },
+          "title": { "type": ["string", "null"] },
+          "text": { "type": "string", "description": "지문 원문. 밑줄은 대괄호 규칙" }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["no", "section", "type", "passageIds", "stem", "body", "conditions", "choices", "answer", "points"],
+        "properties": {
+          "no": { "type": "integer" },
+          "section": { "type": "string", "enum": ["OBJECTIVE", "SUBJECTIVE"] },
+          "type": {
+            "type": "string",
+            "enum": [
+              "OBJ_MAIN_IDEA", "OBJ_DETAIL", "OBJ_BLANK", "OBJ_GRAMMAR", "OBJ_VOCAB", "OBJ_ORDER",
+              "OBJ_INSERT", "OBJ_IRRELEVANT", "OBJ_REFERENCE", "OBJ_SUMMARY", "OBJ_LISTENING", "OBJ_OTHER",
+              "SUMMARY_BLANK", "SENTENCE_ORDER", "GRAMMAR_FIX", "GUIDED_WRITING", "SUBJ_SHORT_ANSWER", "SUBJ_OTHER"
+            ]
+          },
+          "passageIds": { "type": "array", "items": { "type": "string" } },
+          "stem": { "type": "string" },
+          "body": { "type": ["string", "null"] },
+          "conditions": { "type": "array", "items": { "type": "string" } },
+          "choices": { "type": "array", "items": { "type": "string" } },
+          "answer": { "type": ["string", "null"] },
+          "points": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}
