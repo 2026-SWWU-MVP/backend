@@ -133,7 +133,8 @@ public class PromptLoader {
             throw new IllegalStateException("프롬프트 파일이 없음: resources/" + path);
         }
         try (InputStream in = resource.getInputStream()) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            // Windows에서 git이 CRLF로 바꿔도 운영체제와 상관없이 같은 프롬프트가 나가도록 LF로 통일
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

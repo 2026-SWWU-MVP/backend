@@ -48,11 +48,13 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 
 테스트는 H2 인메모리 DB와 Mock LLM으로 실행되므로 PostgreSQL과 API 키가 없어도 됩니다.
 
-실제 OpenAI 호출 확인(비용 발생)은 `.env`에 `LLM_API_KEY`, `LLM_MODEL`을 넣고 스모크 테스트만 실행합니다. 키가 없으면 이 테스트는 건너뜁니다.
+실제 OpenAI를 호출하는 테스트(`@Tag("llm")`)는 `./gradlew test`에서 빠지고, 별도 태스크로 실행합니다 (비용 발생, `.env`에 `LLM_API_KEY`, `LLM_MODEL` 필요).
 
 ```bash
-./gradlew test --tests '*OpenAiLlmClientSmokeTest' -i
+./gradlew llmTest --tests '*OpenAiLlmClientSmokeTest'
 ```
+
+기출 PDF 추출 실험은 [experiments/README.md](experiments/README.md)를 참고하세요.
 
 ## 패키지 구조
 
