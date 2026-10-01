@@ -17,6 +17,11 @@
    - `{파일명}.md`: 지문과 문항을 읽기 좋게 정리한 리포트 (원본 PDF와 나란히 비교)
    - `{파일명}.json`: 원본 추출 결과
 
+   - 일부 파일만: `EXPERIMENT_FILTER=압구정,현대 ./gradlew llmTest --tests '*ExtractionExperiment'`
+   - 점검 규칙(`ExtractionChecker`)만 바꿨을 때 API 호출 없이 다시 점검: `RECHECK=true ./gradlew llmTest --tests '*ExtractionExperiment'`
+
+결과 정리: [RESULTS-extract.md](RESULTS-extract.md)
+
 ## 확인할 것
 
 - 문항 수가 원본과 같은가 (누락, 중복)
