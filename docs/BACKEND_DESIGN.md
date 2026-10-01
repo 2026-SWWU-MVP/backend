@@ -70,7 +70,7 @@
 | ORM | Spring Data JPA | JSON 컬럼은 `@JdbcTypeCode(SqlTypes.JSON)` |
 | DB | PostgreSQL | 패턴·검증 결과 등 가변 데이터는 JSONB |
 | 비밀번호 | `spring-security-crypto` (BCrypt만) | Spring Security 아님. 암호화 유틸만 있는 작은 모듈 |
-| LLM 연동 | `RestClient` + 직접 만든 `LlmClient` 인터페이스 | PDF 입력과 JSON 스키마 출력을 지원하는 모델 사용 |
+| LLM 연동 | OpenAI Responses API + `RestClient` + 직접 만든 `LlmClient` 인터페이스 | PDF 입력(`input_file`)과 JSON 스키마 출력(strict)을 사용. `LLM_PROVIDER=mock`이면 고정 응답 |
 | 시험범위 텍스트 | Apache PDFBox 3 | 지문처럼 단순한 텍스트 PDF 전용. 기출 분석에는 쓰지 않음 |
 | 템플릿 | Thymeleaf | 시험지 HTML 생성 |
 | PDF 출력 | OpenHTMLtoPDF | 1단 레이아웃, 한글 TTF 임베딩, 로고 이미지 삽입 |
@@ -684,7 +684,7 @@ com.smwu.backend
 ├─ problem       Problem, ProblemService(검수)
 │  └─ type       유형별 ProblemTypeHandler (프롬프트 스키마, 조건 템플릿, 조립, 검증)
 ├─ worksheet     Worksheet, WorksheetService
-├─ ai            LlmClient, HttpLlmClient, MockLlmClient, prompts/*.txt
+├─ ai            LlmClient, OpenAiLlmClient, MockLlmClient, PromptLoader
 └─ document      PdfTextReader(PDFBox), PdfRenderer(OpenHTMLtoPDF)
 ```
 
