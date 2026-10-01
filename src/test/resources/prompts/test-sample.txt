@@ -1,0 +1,3 @@
+학교: {{school}}
+지문:
+{{ passage }}

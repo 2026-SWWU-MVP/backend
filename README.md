@@ -24,7 +24,8 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 
 ### 환경변수
 
-기본값은 `src/main/resources/application.properties`에 있고, 필요한 것만 환경변수로 덮어씁니다.
+기본값은 `src/main/resources/application.properties`에 있고, 필요한 것만 덮어씁니다.
+프로젝트 루트에 `.env` 파일을 만들면 서버 실행과 `./gradlew test`가 자동으로 읽습니다 (`.env.example` 참고, `.env`는 커밋 금지).
 
 | 환경변수 | 기본값 | 설명 |
 |---|---|---|
@@ -33,8 +34,11 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 | `DB_PASSWORD` | `postgres` | DB 비밀번호 |
 | `STORAGE_ROOT` | `./storage` | 업로드 파일 저장 경로 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` | 프론트 주소 |
-| `LLM_API_KEY` | 없음 | LLM API 키 (**절대 커밋하지 않기**) |
-| `LLM_MODEL` | 없음 | 사용할 LLM 모델 |
+| `LLM_PROVIDER` | `mock` | `mock`: API 호출 없이 `resources/mock-llm/{task}.json` 고정 응답 / `openai`: 실제 호출 |
+| `LLM_API_KEY` | 없음 | OpenAI API 키 (**절대 커밋하지 않기**). `openai`일 때 필수 |
+| `LLM_MODEL` | 없음 | OpenAI 모델 이름 (PDF 입력을 지원하는 비전 모델). `openai`일 때 필수 |
+| `LLM_BASE_URL` | `https://api.openai.com/v1` | API 주소 |
+| `LLM_TIMEOUT_SECONDS` | `180` | LLM 응답 대기 시간 |
 
 ## 테스트
 
@@ -42,7 +46,13 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 ./gradlew test
 ```
 
-테스트는 H2 인메모리 DB로 실행되므로 PostgreSQL이 없어도 됩니다.
+테스트는 H2 인메모리 DB와 Mock LLM으로 실행되므로 PostgreSQL과 API 키가 없어도 됩니다.
+
+실제 OpenAI 호출 확인(비용 발생)은 `.env`에 `LLM_API_KEY`, `LLM_MODEL`을 넣고 스모크 테스트만 실행합니다. 키가 없으면 이 테스트는 건너뜁니다.
+
+```bash
+./gradlew test --tests '*OpenAiLlmClientSmokeTest' -i
+```
 
 ## 패키지 구조
 
