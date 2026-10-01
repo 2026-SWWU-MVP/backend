@@ -3,6 +3,7 @@ package com.smwu.backend.ai;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -12,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Set;
@@ -19,9 +21,10 @@ import java.util.Set;
 /**
  * OpenAI Responses API(POST /responses) 구현체.
  * <ul>
- *   <li>PDF는 {@code input_file}에 base64 data URL로 넣는다 (멀티모달 모델이 텍스트와 페이지 이미지를 함께 읽음)</li>
+ *   <li>PDF는 {@code input_file}, 이미지는 {@code input_image}(detail=high)에 base64 data URL로 넣는다.
+ *       텍스트 레이어가 있는 PDF는 텍스트만 전달되므로 밑줄을 봐야 하면 페이지 이미지를 함께 보낸다</li>
  *   <li>응답은 {@code text.format = json_schema (strict)}로 강제한다</li>
- *   <li>429/5xx/타임아웃/JSON 변환 실패는 1회 재시도, 거부(refusal)와 4xx는 바로 실패</li>
+ *   <li>429/5xx/JSON 변환 실패는 1회, 네트워크 오류(연결 끊김·타임아웃)는 2회 재시도. 거부(refusal)와 4xx는 바로 실패</li>
  *   <li>시험지 내용이 OpenAI에 저장되지 않도록 {@code store: false}</li>
  * </ul>
  */
@@ -29,6 +32,9 @@ import java.util.Set;
 public class OpenAiLlmClient implements LlmClient {
 
     static final int MAX_ATTEMPTS = 2;
+    /** 큰 요청(시험지 이미지 수 MB)은 연결이 끊기는 경우가 있어 네트워크 오류는 한 번 더 시도한다 */
+    static final int MAX_NETWORK_ATTEMPTS = 3;
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Set<Integer> RETRYABLE_STATUS = Set.of(408, 429, 500, 502, 503, 504);
     private static final int ERROR_BODY_LOG_LIMIT = 500;
 
@@ -46,6 +52,20 @@ public class OpenAiLlmClient implements LlmClient {
         this.objectMapper = objectMapper;
         this.model = model;
         this.retryBackoff = retryBackoff;
+    }
+
+    /**
+     * OpenAI 호출용 RestClient.Builder. HTTP/1.1로 고정한다.
+     * JDK HttpClient의 HTTP/2로 수 MB 요청을 보내면 Connection reset이 나고, 끊긴 연결을 재사용해 재시도까지 바로 실패했다 (이슈 #5 실험)
+     */
+    public static RestClient.Builder restClientBuilder(Duration readTimeout) {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(CONNECT_TIMEOUT)
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(readTimeout);
+        return RestClient.builder().requestFactory(requestFactory);
     }
 
     @Override
@@ -80,7 +100,7 @@ public class OpenAiLlmClient implements LlmClient {
                 }
                 logRetry(request, attempt, detail);
             } catch (ResourceAccessException e) {
-                if (attempt >= MAX_ATTEMPTS) {
+                if (attempt >= MAX_NETWORK_ATTEMPTS) {
                     throw fail(request, "연결 실패 또는 타임아웃: " + e.getMessage(), e);
                 }
                 logRetry(request, attempt, e.getMessage());
@@ -90,7 +110,7 @@ public class OpenAiLlmClient implements LlmClient {
                 }
                 logRetry(request, attempt, "JSON 변환 실패: " + e.getOriginalMessage());
             }
-            sleep(retryBackoff);
+            sleep(retryBackoff.multipliedBy(attempt));
         }
     }
 
@@ -104,11 +124,19 @@ public class OpenAiLlmClient implements LlmClient {
         userMessage.put("role", "user");
         ArrayNode content = userMessage.putArray("content");
         for (LlmFile file : request.files()) {
-            content.addObject()
-                    .put("type", "input_file")
-                    .put("filename", file.filename())
-                    .put("file_data", "data:" + file.mimeType() + ";base64,"
-                            + Base64.getEncoder().encodeToString(file.content()));
+            String dataUrl = "data:" + file.mimeType() + ";base64," + Base64.getEncoder().encodeToString(file.content());
+            if (file.isImage()) {
+                // 시험지 밑줄·작은 글씨를 읽어야 하므로 high
+                content.addObject()
+                        .put("type", "input_image")
+                        .put("image_url", dataUrl)
+                        .put("detail", "high");
+            } else {
+                content.addObject()
+                        .put("type", "input_file")
+                        .put("filename", file.filename())
+                        .put("file_data", dataUrl);
+            }
         }
         content.addObject()
                 .put("type", "input_text")

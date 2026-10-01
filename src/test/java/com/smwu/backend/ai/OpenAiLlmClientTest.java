@@ -11,6 +11,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -22,6 +23,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -73,6 +75,21 @@ class OpenAiLlmClientTest {
     }
 
     @Test
+    void 이미지는_input_image_detail_high로_보낸다() {
+        server.expect(once(), requestTo(URL))
+                .andExpect(jsonPath("$.input[0].content[0].type").value("input_image"))
+                .andExpect(jsonPath("$.input[0].content[0].image_url").value("data:image/jpeg;base64,/9j/"))
+                .andExpect(jsonPath("$.input[0].content[0].detail").value("high"))
+                .andExpect(jsonPath("$.input[0].content[1].type").value("input_text"))
+                .andRespond(completed("{\"title\":\"ok\",\"keywords\":[]}"));
+
+        LlmRequest request = textRequest().withFiles(List.of(LlmFile.jpeg("page-1.jpg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF})));
+        client.generate(request, Summary.class);
+
+        server.verify();
+    }
+
+    @Test
     void 응답_JSON_변환에_실패하면_한_번_재시도한다() {
         server.expect(once(), requestTo(URL)).andRespond(completed("{\"title\": 이건 JSON 아님"));
         server.expect(once(), requestTo(URL)).andRespond(completed("{\"title\":\"ok\",\"keywords\":[]}"));
@@ -100,6 +117,28 @@ class OpenAiLlmClientTest {
         server.expect(once(), requestTo(URL)).andRespond(completed("{\"title\":\"ok\",\"keywords\":[]}"));
 
         assertThat(client.generate(textRequest(), Summary.class).value().title()).isEqualTo("ok");
+        server.verify();
+    }
+
+    @Test
+    void 연결이_끊기면_최대_3번까지_시도한다() {
+        server.expect(once(), requestTo(URL)).andRespond(withException(new IOException("Connection reset")));
+        server.expect(once(), requestTo(URL)).andRespond(withException(new IOException("Connection reset")));
+        server.expect(once(), requestTo(URL)).andRespond(completed("{\"title\":\"ok\",\"keywords\":[]}"));
+
+        assertThat(client.generate(textRequest(), Summary.class).value().title()).isEqualTo("ok");
+        server.verify();
+    }
+
+    @Test
+    void 연결이_3번_끊기면_LlmException() {
+        for (int i = 0; i < 3; i++) {
+            server.expect(once(), requestTo(URL)).andRespond(withException(new IOException("Connection reset")));
+        }
+
+        assertThatThrownBy(() -> client.generate(textRequest(), Summary.class))
+                .isInstanceOf(LlmException.class)
+                .satisfies(e -> assertThat(((LlmException) e).getDetail()).contains("Connection reset"));
         server.verify();
     }
 
