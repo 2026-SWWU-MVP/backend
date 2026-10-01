@@ -22,7 +22,8 @@ public class LlmConfig {
     @Bean
     public LlmClient llmClient(AppProperties appProperties, ObjectMapper objectMapper) {
         AppProperties.Llm llm = appProperties.llm();
-        String provider = llm.provider() == null ? "mock" : llm.provider().trim().toLowerCase();
+        String provider = llm.provider() == null || llm.provider().isBlank()
+                ? "mock" : llm.provider().trim().toLowerCase();
 
         return switch (provider) {
             case "mock" -> {

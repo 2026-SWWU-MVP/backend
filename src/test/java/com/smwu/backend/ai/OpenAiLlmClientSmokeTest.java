@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 실제 OpenAI API를 호출하는 확인용 테스트. LLM_API_KEY와 LLM_MODEL 환경변수가 있을 때만 실행된다 (비용 발생).
  * <pre>
- * LLM_API_KEY=sk-... LLM_MODEL=... ./gradlew test --tests '*OpenAiLlmClientSmokeTest'
+ * ./gradlew test --tests '*OpenAiLlmClientSmokeTest' -i   (.env에 LLM_API_KEY, LLM_MODEL 설정)
  * </pre>
  */
 @EnabledIfEnvironmentVariable(named = "LLM_API_KEY", matches = ".+")

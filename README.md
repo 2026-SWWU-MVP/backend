@@ -24,7 +24,8 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 
 ### 환경변수
 
-기본값은 `src/main/resources/application.properties`에 있고, 필요한 것만 환경변수로 덮어씁니다.
+기본값은 `src/main/resources/application.properties`에 있고, 필요한 것만 덮어씁니다.
+프로젝트 루트에 `.env` 파일을 만들면 서버 실행과 `./gradlew test`가 자동으로 읽습니다 (`.env.example` 참고, `.env`는 커밋 금지).
 
 | 환경변수 | 기본값 | 설명 |
 |---|---|---|
@@ -47,10 +48,10 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 
 테스트는 H2 인메모리 DB와 Mock LLM으로 실행되므로 PostgreSQL과 API 키가 없어도 됩니다.
 
-실제 OpenAI 호출 확인(비용 발생)은 환경변수를 넣고 스모크 테스트만 실행합니다.
+실제 OpenAI 호출 확인(비용 발생)은 `.env`에 `LLM_API_KEY`, `LLM_MODEL`을 넣고 스모크 테스트만 실행합니다. 키가 없으면 이 테스트는 건너뜁니다.
 
 ```bash
-LLM_API_KEY=sk-... LLM_MODEL=모델이름 ./gradlew test --tests '*OpenAiLlmClientSmokeTest'
+./gradlew test --tests '*OpenAiLlmClientSmokeTest' -i
 ```
 
 ## 패키지 구조

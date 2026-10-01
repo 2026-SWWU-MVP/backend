@@ -48,4 +48,18 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    // .env 값을 테스트 환경변수로 넘긴다 (실제 API를 부르는 스모크 테스트용). 일반 테스트는 Mock LLM을 쓴다
+    def envFile = file('.env')
+    if (envFile.exists()) {
+        envFile.readLines('UTF-8')
+                .collect { it.trim() }
+                .findAll { it && !it.startsWith('#') && it.contains('=') }
+                .each { line ->
+                    def (key, value) = [line.substring(0, line.indexOf('=')).trim(), line.substring(line.indexOf('=') + 1).trim()]
+                    if (value) {
+                        environment key, value
+                    }
+                }
+    }
 }
