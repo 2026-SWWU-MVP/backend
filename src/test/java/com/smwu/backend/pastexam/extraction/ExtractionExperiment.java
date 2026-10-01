@@ -62,7 +62,7 @@ class ExtractionExperiment {
             try {
                 LlmResult<ExtractedExam> result = extractor.extract(pdf.getFileName().toString(), Files.readAllBytes(pdf));
                 long elapsedMs = System.currentTimeMillis() - startedAt;
-                List<String> issues = ExtractionChecker.check(result.value());
+                List<String> issues = ExtractionChecker.check(result.value()).stream().map(ExtractionChecker.Issue::text).toList();
 
                 writeJson(name, result, elapsedMs, issues);
                 Files.writeString(OUTPUT_DIR.resolve(name + ".md"),
@@ -92,7 +92,7 @@ class ExtractionExperiment {
         for (Path json : saved) {
             ObjectNode output = (ObjectNode) objectMapper.readTree(Files.readString(json, StandardCharsets.UTF_8));
             ExtractedExam exam = objectMapper.treeToValue(output.path("result"), ExtractedExam.class);
-            List<String> issues = ExtractionChecker.check(exam);
+            List<String> issues = ExtractionChecker.check(exam).stream().map(ExtractionChecker.Issue::text).toList();
             output.set("checkerIssues", objectMapper.valueToTree(issues));
             Files.writeString(json, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(output), StandardCharsets.UTF_8);
 
