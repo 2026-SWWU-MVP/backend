@@ -27,19 +27,19 @@ public record ExtractedExam(
      * @param no         시험지의 문항 번호 (서술형은 서술형 번호)
      * @param section    객관식 / 서술형
      * @param type       문항 유형
-     * @param passageId  참조 지문 ID. 지문이 없는 문항은 null
+     * @param passageIds 참조 지문 ID 목록. (A)(B)로 나뉜 지문처럼 여러 개일 수 있고, 지문이 없으면 빈 목록
      * @param stem       발문 (한국어 지시문)
      * @param body       지문과 별도로 문항에만 있는 본문 (요약문, 영작할 우리말 등). 없으면 null
      * @param conditions [조건] 항목. 번호 없이 한 항목씩
      * @param choices    객관식 선택지 또는 [보기] 항목. 번호 없이 순서대로
-     * @param answer     시험지에 정답이 적혀 있을 때만. 추측하지 않음
+     * @param answer     시험지에 인쇄된 정답·모범답안(정답표 포함)이 있을 때만. 학생 필기나 추측은 넣지 않음
      * @param points     배점. 표시가 없으면 null
      */
     public record Question(
             int no,
             QuestionSection section,
             QuestionType type,
-            String passageId,
+            List<String> passageIds,
             String stem,
             String body,
             List<String> conditions,

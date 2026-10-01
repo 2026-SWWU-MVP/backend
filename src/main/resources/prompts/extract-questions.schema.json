@@ -21,7 +21,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["no", "section", "type", "passageId", "stem", "body", "conditions", "choices", "answer", "points"],
+        "required": ["no", "section", "type", "passageIds", "stem", "body", "conditions", "choices", "answer", "points"],
         "properties": {
           "no": { "type": "integer" },
           "section": { "type": "string", "enum": ["OBJECTIVE", "SUBJECTIVE"] },
@@ -29,11 +29,11 @@
             "type": "string",
             "enum": [
               "OBJ_MAIN_IDEA", "OBJ_DETAIL", "OBJ_BLANK", "OBJ_GRAMMAR", "OBJ_VOCAB", "OBJ_ORDER",
-              "OBJ_INSERT", "OBJ_IRRELEVANT", "OBJ_REFERENCE", "OBJ_SUMMARY", "OBJ_OTHER",
+              "OBJ_INSERT", "OBJ_IRRELEVANT", "OBJ_REFERENCE", "OBJ_SUMMARY", "OBJ_LISTENING", "OBJ_OTHER",
               "SUMMARY_BLANK", "SENTENCE_ORDER", "GRAMMAR_FIX", "GUIDED_WRITING", "SUBJ_SHORT_ANSWER", "SUBJ_OTHER"
             ]
           },
-          "passageId": { "type": ["string", "null"] },
+          "passageIds": { "type": "array", "items": { "type": "string" } },
           "stem": { "type": "string" },
           "body": { "type": ["string", "null"] },
           "conditions": { "type": "array", "items": { "type": "string" } },

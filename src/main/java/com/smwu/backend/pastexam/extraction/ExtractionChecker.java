@@ -20,7 +20,10 @@ import java.util.stream.Collectors;
  */
 public final class ExtractionChecker {
 
-    private static final Pattern NUMBERED_BRACKET = Pattern.compile("[①②③④⑤⑥⑦⑧⑨⑩]\\[[^\\[\\]]+]");
+    /** 밑줄 대괄호 표기: ①[표현], ⓐ[표현], (A)[표현] */
+    private static final Pattern MARKED_BRACKET = Pattern.compile("(?:[①-⑩ⓐ-ⓩ]|\\([A-E]\\))\\[[^\\[\\]]+]");
+    /** 선택지 번호가 지문 안에 있는 문항인지 판단 (무관한 문장, 밑줄 어휘, 문장 삽입 등) */
+    private static final Pattern CIRCLED_NUMBER = Pattern.compile("[①-⑤]");
     private static final String UNREADABLE = "[판독불가]";
 
     private ExtractionChecker() {
@@ -46,46 +49,48 @@ public final class ExtractionChecker {
                 issues.add(at + ": 문항 번호 중복");
             }
 
-            Passage passage = null;
-            if (q.passageId() != null) {
-                passage = passages.get(q.passageId());
+            StringBuilder textBuilder = new StringBuilder();
+            for (String passageId : q.passageIds()) {
+                Passage passage = passages.get(passageId);
                 if (passage == null) {
-                    issues.add(at + ": 없는 지문 " + q.passageId() + " 참조");
+                    issues.add(at + ": 없는 지문 " + passageId + " 참조");
                 } else {
-                    usedPassages.add(q.passageId());
+                    usedPassages.add(passageId);
+                    textBuilder.append(passage.text()).append('\n');
                 }
             }
-            String text = (passage == null ? "" : passage.text()) + "\n" + (q.body() == null ? "" : q.body());
+            if (q.body() != null) {
+                textBuilder.append(q.body());
+            }
+            String text = textBuilder.toString();
 
-            checkBrackets(at, text, issues);
+            checkBrackets(at, q.body() == null ? "" : q.body(), issues);
             if (text.contains(UNREADABLE) || q.stem().contains(UNREADABLE)) {
                 issues.add(at + ": 판독불가 부분 있음");
             }
 
-            switch (q.type()) {
-                case OBJ_GRAMMAR -> {
-                    // 밑줄 ①~⑤형이면 ①[ ]~⑤[ ]가 5개, 네모 (A)(B)(C)형이면 (A)[ ] 표기가 있어야 한다
-                    int marks = countNumberedBrackets(text);
-                    if (marks != 5 && !text.contains("(A)[")) {
-                        issues.add(at + ": 어법 객관식인데 ①[ ]~⑤[ ] 표기가 " + marks + "개 (밑줄 → 대괄호 변환 확인 필요)");
-                    }
-                }
-                case GRAMMAR_FIX -> {
-                    if (countNumberedBrackets(text) == 0 && !text.contains("[")) {
-                        issues.add(at + ": 어법 서술형인데 대괄호 표기가 없음 (밑줄이 사라졌을 수 있음)");
-                    }
-                }
-                case SENTENCE_ORDER -> {
-                    if (q.choices().size() < 2) {
-                        issues.add(at + ": 어구 배열인데 [보기] 어구가 " + q.choices().size() + "개");
-                    }
-                }
-                default -> {
+            int marks = countMarkedBrackets(text);
+            // 선택지가 지문·본문 안에 있는 문항: 무관한 문장(①문장), 밑줄형(①[ ], (A)[ ]), 문장 고르기형(본문에 ①~⑤ 문장)
+            boolean choicesInText = countCircledNumbers(text) >= 5 || marks >= 5;
+
+            if (q.type() == QuestionType.OBJ_GRAMMAR) {
+                if (marks == 0 && q.choices().size() != 5 && !choicesInText) {
+                    issues.add(at + ": 어법 객관식인데 밑줄 대괄호도, 선택지 5개도 없음 (밑줄 → 대괄호 변환 확인 필요)");
+                } else if (marks > 0 && marks < 5 && !text.contains("(A)[")) {
+                    issues.add(at + ": 어법 객관식 밑줄 대괄호가 " + marks + "개 (5개 예상, 원본 확인 필요)");
                 }
             }
+            if (q.type() == QuestionType.SENTENCE_ORDER && q.choices().size() < 2 && !hasInlineWordList(q)) {
+                issues.add(at + ": 어구 배열인데 [보기] 어구가 " + q.choices().size() + "개");
+            }
 
-            if (q.section() == QuestionSection.OBJECTIVE && q.choices().size() != 5) {
-                issues.add(at + ": 객관식 선택지가 " + q.choices().size() + "개");
+            if (q.section() == QuestionSection.OBJECTIVE && q.type() != QuestionType.OBJ_LISTENING) {
+                if (q.choices().size() != 5 && !(q.choices().isEmpty() && choicesInText)) {
+                    issues.add(at + ": 객관식 선택지가 " + q.choices().size() + "개");
+                }
+                if (q.passageIds().isEmpty() && q.body() == null && q.choices().isEmpty()) {
+                    issues.add(at + ": 지문, 본문, 선택지가 모두 없음");
+                }
             }
             if (q.section() == QuestionSection.SUBJECTIVE && q.type().name().startsWith("OBJ_")) {
                 issues.add(at + ": 서술형인데 객관식 유형 " + q.type());
@@ -104,8 +109,23 @@ public final class ExtractionChecker {
         return issues.stream().distinct().toList();
     }
 
-    static int countNumberedBrackets(String text) {
-        Matcher matcher = NUMBERED_BRACKET.matcher(text);
+    /** 배열할 어구가 [보기] 대신 본문 "( men / seem )"이나 [조건] "lack, evolve, describe ...을 사용할 것"에 있는 경우 */
+    private static boolean hasInlineWordList(Question q) {
+        if (q.body() != null && q.body().contains("/")) {
+            return true;
+        }
+        return q.conditions().stream().anyMatch(c -> c.split(",").length >= 4);
+    }
+
+    static int countMarkedBrackets(String text) {
+        return count(MARKED_BRACKET.matcher(text));
+    }
+
+    private static int countCircledNumbers(String text) {
+        return count(CIRCLED_NUMBER.matcher(text));
+    }
+
+    private static int count(Matcher matcher) {
         int count = 0;
         while (matcher.find()) {
             count++;

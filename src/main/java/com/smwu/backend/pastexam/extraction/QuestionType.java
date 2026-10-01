@@ -17,6 +17,7 @@ public enum QuestionType {
     OBJ_IRRELEVANT,     // 흐름과 무관한 문장
     OBJ_REFERENCE,      // 지칭 대상
     OBJ_SUMMARY,        // 요약문 완성 (선택지)
+    OBJ_LISTENING,      // 듣기 (지문이 시험지에 없음, 생성 대상 아님)
     OBJ_OTHER,
 
     // 서술형
