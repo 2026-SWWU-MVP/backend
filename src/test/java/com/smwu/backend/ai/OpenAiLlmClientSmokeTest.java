@@ -14,6 +14,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 
@@ -24,10 +27,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <pre>
  * ./gradlew test --tests '*OpenAiLlmClientSmokeTest' -i   (.env에 LLM_API_KEY, LLM_MODEL 설정)
  * </pre>
+ * 보낸 PDF와 받은 결과는 {@code build/smoke/}에 저장된다 (input.pdf, result.json).
  */
 @EnabledIfEnvironmentVariable(named = "LLM_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "LLM_MODEL", matches = ".+")
 class OpenAiLlmClientSmokeTest {
+
+    private static final Path OUTPUT_DIR = Path.of("build", "smoke");
 
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
@@ -60,9 +66,25 @@ class OpenAiLlmClientSmokeTest {
 
         System.out.println("model=" + result.model() + " tokens(in=" + result.inputTokens()
                 + ", out=" + result.outputTokens() + ")\n" + result.rawText());
+        saveOutput(request, result);
         assertThat(result.value().title()).containsIgnoringCase("Old Cities");
         assertThat(result.value().lastWord()).isEqualToIgnoringCase("area");
         assertThat(result.value().keywords()).isNotEmpty();
+    }
+
+    /** 사람이 직접 확인할 수 있게 보낸 PDF와 받은 결과를 build/smoke/에 저장 */
+    private void saveOutput(LlmRequest request, LlmResult<PdfSummary> result) throws IOException {
+        Files.createDirectories(OUTPUT_DIR);
+        Files.write(OUTPUT_DIR.resolve("input.pdf"), request.files().get(0).content());
+
+        var output = objectMapper.createObjectNode();
+        output.put("model", result.model());
+        output.put("inputTokens", result.inputTokens());
+        output.put("outputTokens", result.outputTokens());
+        output.put("prompt", request.userPrompt());
+        output.set("result", objectMapper.readTree(result.rawText()));
+        Files.writeString(OUTPUT_DIR.resolve("result.json"),
+                objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(output), StandardCharsets.UTF_8);
     }
 
     /** 출력예시 지문 일부로 만든 1페이지 PDF */
