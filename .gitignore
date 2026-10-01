@@ -37,7 +37,7 @@ out/
 .vscode/
 
 ### 로컬 업로드 파일 / 환경변수 ###
-storage/
+/storage/
 .env
 
 ### 실험용 기출 PDF (저작권, 커밋 금지) ###

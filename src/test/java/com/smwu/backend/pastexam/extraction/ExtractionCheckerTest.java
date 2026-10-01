@@ -79,7 +79,7 @@ class ExtractionCheckerTest {
                         question(4, OBJECTIVE, QuestionType.OBJ_GRAMMAR, List.of("P2"), List.of())),
                 List.of());
 
-        assertThat(ExtractionChecker.check(exam)).contains(
+        assertThat(texts(exam)).contains(
                 "3번: 어법 객관식 밑줄 대괄호가 1개 (5개 예상, 원본 확인 필요)",
                 "4번: 어법 객관식인데 밑줄 대괄호도, 선택지 5개도 없음 (밑줄 → 대괄호 변환 확인 필요)");
     }
@@ -105,7 +105,7 @@ class ExtractionCheckerTest {
                         question(1, OBJECTIVE, QuestionType.OBJ_DETAIL, List.of("P9"), FIVE)),
                 List.of());
 
-        assertThat(ExtractionChecker.check(exam)).containsExactlyInAnyOrder(
+        assertThat(texts(exam)).containsExactlyInAnyOrder(
                 "1번: 문항 번호 중복",
                 "1번: 없는 지문 P9 참조",
                 "지문 P2: 참조하는 문항이 없음");
@@ -118,10 +118,33 @@ class ExtractionCheckerTest {
                 List.of(question(2, SUBJECTIVE, QuestionType.OBJ_BLANK, List.of("P1"), List.of())),
                 List.of());
 
-        assertThat(ExtractionChecker.check(exam)).contains(
+        assertThat(texts(exam)).contains(
                 "서술형 2번: 판독불가 부분 있음",
                 "서술형 2번: 서술형인데 객관식 유형 OBJ_BLANK",
                 "지문 P1: 대괄호 짝이 맞지 않음");
+    }
+
+    @Test
+    void 이슈마다_어느_문항_지문의_문제인지_담긴다() {
+        ExtractedExam exam = new ExtractedExam(
+                List.of(new Passage("P1", null, "text"), new Passage("P2", null, "unused [x")),
+                List.of(question(2, SUBJECTIVE, QuestionType.SENTENCE_ORDER, List.of("P1"), List.of())),
+                List.of());
+
+        List<ExtractionChecker.Issue> issues = ExtractionChecker.check(exam);
+
+        assertThat(issues).anySatisfy(i -> {
+            assertThat(i.isFor(SUBJECTIVE, 2)).isTrue();
+            assertThat(i.isFor(OBJECTIVE, 2)).isFalse();
+            assertThat(i.message()).isEqualTo("어구 배열인데 [보기] 어구가 0개");
+        });
+        assertThat(issues).filteredOn(i -> "P2".equals(i.passageId()))
+                .extracting(ExtractionChecker.Issue::message)
+                .containsExactlyInAnyOrder("참조하는 문항이 없음", "대괄호 짝이 맞지 않음");
+    }
+
+    private static List<String> texts(ExtractedExam exam) {
+        return ExtractionChecker.check(exam).stream().map(ExtractionChecker.Issue::text).toList();
     }
 
     private static Question question(int no, ExtractedExam.QuestionSection section, QuestionType type,

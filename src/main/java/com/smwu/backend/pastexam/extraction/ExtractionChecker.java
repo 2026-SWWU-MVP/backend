@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 /**
  * 추출 결과를 코드로 점검한다. LLM이 놓치기 쉬운 구조 오류(번호 중복, 없는 지문 참조, 대괄호 규칙 위반 등)를 찾아
  * 사람이 검수할 위치를 알려준다. 결과가 비어 있으면 구조상 문제는 없다는 뜻이다 (내용 정확도는 사람이 확인).
+ * 이슈마다 어느 문항·지문의 문제인지 담겨 있어 검수 화면에서 해당 위치 옆에 표시할 수 있다.
  */
 public final class ExtractionChecker {
 
@@ -26,34 +28,58 @@ public final class ExtractionChecker {
     private static final Pattern CIRCLED_NUMBER = Pattern.compile("[①-⑤]");
     private static final String UNREADABLE = "[판독불가]";
 
+    /**
+     * @param section   문항 이슈면 문항 구분, 아니면 null
+     * @param no        문항 이슈면 문항 번호, 아니면 null
+     * @param passageId 지문 이슈면 지문 id(P1 ...), 아니면 null
+     * @param message   이슈 내용
+     */
+    public record Issue(QuestionSection section, Integer no, String passageId, String message) {
+
+        public boolean isFor(QuestionSection section, int no) {
+            return this.section == section && this.no != null && this.no == no;
+        }
+
+        /** 사람이 읽는 형식. 예) "서술형 2번: 어구 배열인데 [보기] 어구가 0개" */
+        public String text() {
+            if (section != null) {
+                return label(section, no) + ": " + message;
+            }
+            if (passageId != null) {
+                return "지문 " + passageId + ": " + message;
+            }
+            return message;
+        }
+    }
+
     private ExtractionChecker() {
     }
 
-    public static List<String> check(ExtractedExam exam) {
-        List<String> issues = new ArrayList<>();
+    public static List<Issue> check(ExtractedExam exam) {
+        List<Issue> issues = new ArrayList<>();
         Map<String, Passage> passages = exam.passages().stream()
                 .collect(Collectors.toMap(Passage::id, Function.identity(), (a, b) -> a));
 
         if (passages.size() != exam.passages().size()) {
-            issues.add("지문 id가 중복됨");
+            issues.add(new Issue(null, null, null, "지문 id가 중복됨"));
         }
         if (exam.questions().isEmpty()) {
-            issues.add("추출된 문항이 없음");
+            issues.add(new Issue(null, null, null, "추출된 문항이 없음"));
         }
 
         Set<String> seenNumbers = new HashSet<>();
         Set<String> usedPassages = new HashSet<>();
         for (Question q : exam.questions()) {
-            String at = label(q);
+            Consumer<String> report = message -> issues.add(new Issue(q.section(), q.no(), null, message));
             if (!seenNumbers.add(q.section() + "-" + q.no())) {
-                issues.add(at + ": 문항 번호 중복");
+                report.accept("문항 번호 중복");
             }
 
             StringBuilder textBuilder = new StringBuilder();
             for (String passageId : q.passageIds()) {
                 Passage passage = passages.get(passageId);
                 if (passage == null) {
-                    issues.add(at + ": 없는 지문 " + passageId + " 참조");
+                    report.accept("없는 지문 " + passageId + " 참조");
                 } else {
                     usedPassages.add(passageId);
                     textBuilder.append(passage.text()).append('\n');
@@ -64,9 +90,11 @@ public final class ExtractionChecker {
             }
             String text = textBuilder.toString();
 
-            checkBrackets(at, q.body() == null ? "" : q.body(), issues);
+            if (q.body() != null && !bracketsBalanced(q.body())) {
+                report.accept("대괄호 짝이 맞지 않음");
+            }
             if (text.contains(UNREADABLE) || q.stem().contains(UNREADABLE)) {
-                issues.add(at + ": 판독불가 부분 있음");
+                report.accept("판독불가 부분 있음");
             }
 
             int marks = countMarkedBrackets(text);
@@ -75,36 +103,38 @@ public final class ExtractionChecker {
 
             if (q.type() == QuestionType.OBJ_GRAMMAR) {
                 if (marks == 0 && q.choices().size() != 5 && !choicesInText) {
-                    issues.add(at + ": 어법 객관식인데 밑줄 대괄호도, 선택지 5개도 없음 (밑줄 → 대괄호 변환 확인 필요)");
+                    report.accept("어법 객관식인데 밑줄 대괄호도, 선택지 5개도 없음 (밑줄 → 대괄호 변환 확인 필요)");
                 } else if (marks > 0 && marks < 5 && !text.contains("(A)[")) {
-                    issues.add(at + ": 어법 객관식 밑줄 대괄호가 " + marks + "개 (5개 예상, 원본 확인 필요)");
+                    report.accept("어법 객관식 밑줄 대괄호가 " + marks + "개 (5개 예상, 원본 확인 필요)");
                 }
             }
             if (q.type() == QuestionType.SENTENCE_ORDER && q.choices().size() < 2 && !hasInlineWordList(q)) {
-                issues.add(at + ": 어구 배열인데 [보기] 어구가 " + q.choices().size() + "개");
+                report.accept("어구 배열인데 [보기] 어구가 " + q.choices().size() + "개");
             }
 
             if (q.section() == QuestionSection.OBJECTIVE && q.type() != QuestionType.OBJ_LISTENING) {
                 if (q.choices().size() != 5 && !(q.choices().isEmpty() && choicesInText)) {
-                    issues.add(at + ": 객관식 선택지가 " + q.choices().size() + "개");
+                    report.accept("객관식 선택지가 " + q.choices().size() + "개");
                 }
                 if (q.passageIds().isEmpty() && q.body() == null && q.choices().isEmpty()) {
-                    issues.add(at + ": 지문, 본문, 선택지가 모두 없음");
+                    report.accept("지문, 본문, 선택지가 모두 없음");
                 }
             }
             if (q.section() == QuestionSection.SUBJECTIVE && q.type().name().startsWith("OBJ_")) {
-                issues.add(at + ": 서술형인데 객관식 유형 " + q.type());
+                report.accept("서술형인데 객관식 유형 " + q.type());
             }
             if (q.section() == QuestionSection.OBJECTIVE && !q.type().name().startsWith("OBJ_")) {
-                issues.add(at + ": 객관식인데 서술형 유형 " + q.type());
+                report.accept("객관식인데 서술형 유형 " + q.type());
             }
         }
 
         for (Passage p : exam.passages()) {
             if (!usedPassages.contains(p.id())) {
-                issues.add("지문 " + p.id() + ": 참조하는 문항이 없음");
+                issues.add(new Issue(null, null, p.id(), "참조하는 문항이 없음"));
             }
-            checkBrackets("지문 " + p.id(), p.text(), issues);
+            if (!bracketsBalanced(p.text())) {
+                issues.add(new Issue(null, null, p.id(), "대괄호 짝이 맞지 않음"));
+            }
         }
         return issues.stream().distinct().toList();
     }
@@ -133,7 +163,8 @@ public final class ExtractionChecker {
         return count;
     }
 
-    private static void checkBrackets(String at, String text, List<String> issues) {
+    /** 대괄호가 중첩 없이 짝이 맞는지 */
+    private static boolean bracketsBalanced(String text) {
         int depth = 0;
         for (char c : text.toCharArray()) {
             if (c == '[') {
@@ -142,16 +173,13 @@ public final class ExtractionChecker {
                 depth--;
             }
             if (depth < 0 || depth > 1) {
-                issues.add(at + ": 대괄호 짝이 맞지 않음");
-                return;
+                return false;
             }
         }
-        if (depth != 0) {
-            issues.add(at + ": 대괄호 짝이 맞지 않음");
-        }
+        return depth == 0;
     }
 
-    private static String label(Question q) {
-        return (q.section() == QuestionSection.SUBJECTIVE ? "서술형 " : "") + q.no() + "번";
+    private static String label(QuestionSection section, Integer no) {
+        return (section == QuestionSection.SUBJECTIVE ? "서술형 " : "") + no + "번";
     }
 }

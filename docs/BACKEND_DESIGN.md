@@ -291,8 +291,9 @@ Academy ─< User (OWNER / TEACHER)
 | `InviteCode` | id, academyId, code(unique), createdBy, expiresAt, usedBy, usedAt, canceled | 강사 초대 코드 |
 | `School` | id, name, region | 공용 학교 목록 |
 | `Workspace` | id, academyId, schoolId, grade, createdBy, createdAt | 학교 + 학년. `(academyId, schoolId, grade)` unique |
-| `PastExam` | id, workspaceId, year, semester, examType, filePath, status, createdBy | 업로드한 기출 PDF |
-| `PastQuestion` | id, pastExamId, no, type, stem, body, conditions(JSON), answer, points | 멀티모달 LLM이 추출한 기출 문항 |
+| `PastExam` | id, workspaceId, examYear, semester, examType, filePath, pageCount, textLayer, status(UPLOADED/EXTRACTING/EXTRACTED/FAILED), failureReason, warnings(JSON), llmModel, 토큰 수, rawResponse, createdBy | 업로드한 기출 PDF와 추출 상태 |
+| `PastPassage` | id, pastExamId, code(P1...), orderNo, title, text, edited | 기출에서 추출한 지문 |
+| `PastQuestion` | id, pastExamId, orderNo, section, no, type, passageCodes(JSON), stem, body, conditions(JSON), choices(JSON), answer, points, edited | 멀티모달 LLM이 추출한 기출 문항. `(section, no)`로 식별 |
 | `SchoolProfile` | 아래 참고 | 출제 프로필. 강사가 확정해야 문제 생성에 사용 가능 |
 | `Material` | id, workspaceId, title, filePath, createdBy | 교과서 2과, 모의고사 등 시험범위 자료 |
 | `Passage` | id, materialId, orderNo, title, content | 지문 단위. 문제는 지문에 딸림 |
@@ -586,11 +587,14 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 
 | Method | Endpoint | 설명 |
 |---|---|---|
-| POST | `/api/workspaces/{id}/past-exams` | 기출 PDF 업로드 (multipart) |
-| GET | `/api/workspaces/{id}/past-exams` | 기출 목록 |
-| POST | `/api/past-exams/{id}/analyze` | 문항 추출 실행 |
-| GET | `/api/past-exams/{id}/questions` | 추출된 문항 조회 |
-| PATCH | `/api/past-questions/{id}` | 추출 결과 수정 |
+| POST | `/api/workspaces/{id}/past-exams` | 기출 PDF 업로드 (multipart: file, examYear, semester, examType). PDF만, 30페이지 이하 |
+| GET | `/api/workspaces/{id}/past-exams` | 기출 목록 (상태, 객관식·서답형 문항 수) |
+| GET | `/api/past-exams/{id}` | 기출 상세. 추출 중 폴링용 (status) |
+| DELETE | `/api/past-exams/{id}` | 기출 삭제 (추출 중이면 409) |
+| POST | `/api/past-exams/{id}/analyze` | 문항 추출 시작 → 202, 비동기 (1~2분). 다시 추출하면 기존 결과 교체 |
+| GET | `/api/past-exams/{id}/questions` | 추출 결과: 지문, 문항, 문항·지문별 점검 이슈, 모델 경고 |
+| PATCH | `/api/past-questions/{id}` | 문항 수정 → 이슈를 다시 계산한 전체 결과 반환 |
+| PATCH | `/api/past-passages/{id}` | 지문 수정 (밑줄 대괄호 보정 등) → 전체 결과 반환 |
 | POST | `/api/workspaces/{id}/profiles` | 기출로 프로필 생성 → DRAFT v1 |
 | GET | `/api/workspaces/{id}/profiles` | 프로필 버전 목록 |
 | GET | `/api/workspaces/{id}/profiles/confirmed` | 현재 확정 프로필 |

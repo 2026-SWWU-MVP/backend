@@ -32,6 +32,23 @@ public final class PdfPageImages {
     private PdfPageImages() {
     }
 
+    /**
+     * @param pageCount 페이지 수
+     * @param textLayer 텍스트 레이어가 있으면 true (스캔본이면 false)
+     */
+    public record PdfInfo(int pageCount, boolean textLayer) {
+    }
+
+    /** 업로드 검증용. 열 수 없는 파일(손상, 암호, PDF 아님)이면 IllegalArgumentException */
+    public static PdfInfo inspect(byte[] pdf) {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document);
+            return new PdfInfo(document.getNumberOfPages(), text.strip().length() >= MIN_TEXT_CHARS);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("PDF를 열 수 없습니다.", e);
+        }
+    }
+
     /** 스캔본처럼 글자 정보가 없는 PDF인지 판단한다 */
     public static boolean hasTextLayer(byte[] pdf) {
         try (PDDocument document = Loader.loadPDF(pdf)) {
