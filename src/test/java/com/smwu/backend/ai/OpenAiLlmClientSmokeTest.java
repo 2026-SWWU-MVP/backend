@@ -31,7 +31,7 @@ class OpenAiLlmClientSmokeTest {
 
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
-    record PdfSummary(String title, int paragraphCount, List<String> keywords) {
+    record PdfSummary(String title, String lastWord, List<String> keywords) {
     }
 
     @Test
@@ -45,13 +45,13 @@ class OpenAiLlmClientSmokeTest {
         LlmRequest request = LlmRequest.of(
                         "smoke-pdf-summary",
                         "You read English exam passages. Answer only with JSON that matches the schema.",
-                        "첨부한 PDF의 제목, 문단 수, 핵심 단어 3개를 추출하시오.",
+                        "첨부한 PDF의 제목, 본문 마지막 단어(마침표 제외), 핵심 단어 3개를 추출하시오.",
                         objectMapper.readTree("""
                                 {"type":"object","additionalProperties":false,
-                                 "required":["title","paragraphCount","keywords"],
+                                 "required":["title","lastWord","keywords"],
                                  "properties":{
                                    "title":{"type":"string"},
-                                   "paragraphCount":{"type":"integer"},
+                                   "lastWord":{"type":"string"},
                                    "keywords":{"type":"array","items":{"type":"string"}}}}
                                 """))
                 .withFiles(List.of(LlmFile.pdf("passage.pdf", samplePdf())));
@@ -61,7 +61,7 @@ class OpenAiLlmClientSmokeTest {
         System.out.println("model=" + result.model() + " tokens(in=" + result.inputTokens()
                 + ", out=" + result.outputTokens() + ")\n" + result.rawText());
         assertThat(result.value().title()).containsIgnoringCase("Old Cities");
-        assertThat(result.value().paragraphCount()).isEqualTo(2);
+        assertThat(result.value().lastWord()).isEqualToIgnoringCase("area");
         assertThat(result.value().keywords()).isNotEmpty();
     }
 
