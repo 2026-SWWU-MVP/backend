@@ -59,6 +59,8 @@ EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*ProfileReviewExperiment'
 
 ```bash
 EXPERIMENT_FILTER=현대 ./gradlew llmTest --tests '*ProblemGenerationExperiment'
+# 어법 오류 수정·조건 영작
+EXPERIMENT_FILTER=현대 EXPERIMENT_TYPES=GRAMMAR_FIX,GUIDED_WRITING ./gradlew llmTest --tests '*ProblemGenerationExperiment'
 ```
 
 결과: `build/experiments/generate/{시험지}.md` — 첫 시도 통과 / 재생성 후 통과 / 실패 수, 문제별 발문·[조건]·본문·[보기]·정답·해설·재생성 이유

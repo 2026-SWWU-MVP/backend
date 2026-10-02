@@ -12,6 +12,8 @@ import com.smwu.backend.pastexam.extraction.ExtractedExam.QuestionSection;
 import com.smwu.backend.pastexam.extraction.QuestionType;
 import com.smwu.backend.problem.domain.ValidationStatus;
 import com.smwu.backend.problem.type.AssembledProblem;
+import com.smwu.backend.problem.type.GrammarFixHandler;
+import com.smwu.backend.problem.type.GuidedWritingHandler;
 import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.problem.type.ProblemOptions;
 import com.smwu.backend.problem.type.SentenceOrderHandler;
@@ -45,6 +47,7 @@ import java.util.stream.Stream;
  * 저장된 기출 추출 결과로 학교 규칙을 만들고, 그 시험지의 지문(시험범위 지문 대신)으로 요약문 빈칸·어구 배열을 만든다.
  * <pre>
  * EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*ProblemGenerationExperiment'
+ * EXPERIMENT_FILTER=압구정 EXPERIMENT_TYPES=GRAMMAR_FIX,GUIDED_WRITING ./gradlew llmTest --tests '*ProblemGenerationExperiment'
  * </pre>
  * 결과: build/experiments/generate/{시험지}.md
  */
@@ -95,7 +98,7 @@ class ProblemGenerationExperiment {
                 .toList();
 
         ProblemGenerator generator = new ProblemGenerator(llm, prompts, new BlindSolver(llm, prompts),
-                List.of(new SummaryBlankHandler(), new SentenceOrderHandler()));
+                List.of(new SummaryBlankHandler(), new SentenceOrderHandler(), new GrammarFixHandler(), new GuidedWritingHandler()));
         StringBuilder md = new StringBuilder("# " + name + " 문제 생성 실험\n\n");
         md.append("학교 규칙 ").append(rules.rules().size()).append("개, 대표 문항 ").append(context.examples().size()).append("개 사용\n\n");
         int total = 0;
@@ -107,9 +110,11 @@ class ProblemGenerationExperiment {
             PassageSource passage = passages.get(i);
             md.append("---\n\n## 지문 ").append(i + 1).append(" (").append(TextNormalizer.wordCount(passage.text())).append("단어)\n\n> ")
                     .append(passage.text()).append("\n\n");
-            List<Object[]> jobs = List.of(
-                    new Object[]{QuestionType.SUMMARY_BLANK, new ProblemOptions(2, i % 2 == 1, null)},
-                    new Object[]{QuestionType.SENTENCE_ORDER, ProblemOptions.defaults()});
+            List<Object[]> jobs = new ArrayList<>();
+            for (QuestionType type : types()) {
+                jobs.add(new Object[]{type, type == QuestionType.SUMMARY_BLANK
+                        ? new ProblemOptions(2, i % 2 == 1, null) : ProblemOptions.defaults()});
+            }
             for (Object[] job : jobs) {
                 long started = System.currentTimeMillis();
                 ProblemGenerator.Outcome outcome = generator.generate(context, passage, (QuestionType) job[0], (ProblemOptions) job[1], i);
@@ -164,6 +169,12 @@ class ProblemGenerationExperiment {
             md.append('\n');
         }
         return md.toString();
+    }
+
+    /** EXPERIMENT_TYPES=GRAMMAR_FIX,GUIDED_WRITING 처럼 지정 (기본: 요약문 빈칸, 어구 배열) */
+    private static List<QuestionType> types() {
+        String env = System.getenv().getOrDefault("EXPERIMENT_TYPES", "SUMMARY_BLANK,SENTENCE_ORDER");
+        return java.util.Arrays.stream(env.split(",")).map(String::strip).map(QuestionType::valueOf).toList();
     }
 
     private static List<PastQuestion> toQuestions(ExtractedExam extracted) {
