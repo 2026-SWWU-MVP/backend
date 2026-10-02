@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 
 /**
  * 문제 1개 생성: LLM 초안 → 코드 조립 → 코드 규칙 검증 → 실패하면 실패 이유를 알려주고 다시 생성 (최대 3번 시도).
+ * 규칙 검증을 통과하면 블라인드 풀이 검증({@link BlindSolver})을 하고, 정답이 애매하면 남은 기회에 다시 생성한다.
+ * 끝까지 애매하면 규칙을 통과한 마지막 문항을 NEEDS_REVIEW로 넘겨 강사가 확인하게 한다.
  * DB를 쓰지 않으므로 LLM 호출 중 트랜잭션이 열리지 않는다. 저장은 호출하는 쪽에서 한다.
  */
 @Slf4j
@@ -35,17 +37,20 @@ public class ProblemGenerator {
 
     private final LlmClient llmClient;
     private final PromptLoader promptLoader;
+    private final BlindSolver blindSolver;
     private final Map<QuestionType, ProblemTypeHandler<?>> handlers = new EnumMap<>(QuestionType.class);
 
-    public ProblemGenerator(LlmClient llmClient, PromptLoader promptLoader, List<ProblemTypeHandler<?>> handlers) {
+    public ProblemGenerator(LlmClient llmClient, PromptLoader promptLoader, BlindSolver blindSolver,
+                            List<ProblemTypeHandler<?>> handlers) {
         this.llmClient = llmClient;
         this.promptLoader = promptLoader;
+        this.blindSolver = blindSolver;
         handlers.forEach(h -> this.handlers.put(h.type(), h));
     }
 
     /**
      * @param problem         마지막 시도에서 조립된 문제 (조립조차 못 했으면 null)
-     * @param status          규칙 검증을 모두 통과하면 PASSED, 아니면 FAILED
+     * @param status          규칙·블라인드 풀이 모두 통과 PASSED, 규칙 통과 + 풀이 불일치 NEEDS_REVIEW, 규칙 실패 FAILED
      * @param checks          마지막 시도의 검증 결과
      * @param attempts        시도 횟수
      * @param attemptFailures 시도별 실패 이유 (통과한 시도는 없음)
@@ -74,6 +79,8 @@ public class ProblemGenerator {
         AssembledProblem last = null;
         List<ValidationCheck> lastChecks = List.of();
         String model = null;
+        AssembledProblem reviewCandidate = null;
+        List<ValidationCheck> reviewChecks = List.of();
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             LlmResult<D> result;
@@ -100,12 +107,28 @@ public class ProblemGenerator {
             lastChecks = checks;
 
             List<String> failed = checks.stream().filter(c -> !c.passed()).map(ValidationCheck::detail).toList();
-            if (failed.isEmpty()) {
-                log.info("문제 생성 {} 통과 attempt={}", handler.type(), attempt);
+            if (!failed.isEmpty()) {
+                failures.add(String.join(" / ", failed));
+                log.info("문제 생성 {} attempt={} 규칙 검증 실패: {}", handler.type(), attempt, failed);
+                continue;
+            }
+
+            List<ValidationCheck> blind = blindSolver.verify(assembled, passage, options);
+            checks.addAll(blind);
+            List<String> blindFailed = blind.stream().filter(c -> !c.passed()).map(ValidationCheck::detail).toList();
+            if (blindFailed.isEmpty()) {
+                log.info("문제 생성 {} PASSED attempt={}", handler.type(), attempt);
                 return new Outcome(assembled, ValidationStatus.PASSED, checks, attempt, failures, model);
             }
-            failures.add(String.join(" / ", failed));
-            log.info("문제 생성 {} attempt={} 규칙 검증 실패: {}", handler.type(), attempt, failed);
+            // 규칙은 통과했지만 정답이 애매함 → 남은 기회에 고쳐 보고, 끝까지 안 되면 이 문항을 NEEDS_REVIEW로 넘긴다
+            reviewCandidate = assembled;
+            reviewChecks = checks;
+            failures.add(String.join(" / ", blindFailed)
+                    + " → 정답이 하나만 되도록 빈칸 단어를 바꾸거나, 다른 후보가 맞지 않게 요약문 문맥을 더 구체적으로 쓸 것");
+            log.info("문제 생성 {} attempt={} 블라인드 풀이 불일치: {}", handler.type(), attempt, blindFailed);
+        }
+        if (reviewCandidate != null) {
+            return new Outcome(reviewCandidate, ValidationStatus.NEEDS_REVIEW, reviewChecks, MAX_ATTEMPTS, failures, model);
         }
         return new Outcome(last, ValidationStatus.FAILED, lastChecks, MAX_ATTEMPTS, failures, model);
     }

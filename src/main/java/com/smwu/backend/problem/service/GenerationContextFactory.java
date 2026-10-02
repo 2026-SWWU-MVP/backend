@@ -39,7 +39,7 @@ public class GenerationContextFactory {
         return new ProfileContext(profile, build(profile));
     }
 
-    GenerationContext build(SchoolProfile profile) {
+    public GenerationContext build(SchoolProfile profile) {
         List<String> teacherRules = profile.getRules().stream()
                 .filter(r -> r.source() == RuleSource.TEACHER)
                 .map(ProfileRule::text)
