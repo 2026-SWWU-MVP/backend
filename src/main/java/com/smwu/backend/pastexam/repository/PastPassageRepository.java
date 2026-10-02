@@ -5,11 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface PastPassageRepository extends JpaRepository<PastPassage, Long> {
 
     List<PastPassage> findByPastExamIdOrderByOrderNo(Long pastExamId);
+
+    List<PastPassage> findByPastExamIdIn(Collection<Long> pastExamIds);
 
     @Modifying
     @Query("delete from PastPassage p where p.pastExamId = :pastExamId")

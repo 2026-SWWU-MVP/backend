@@ -33,6 +33,7 @@ public enum ErrorCode {
     PROFILE_NOT_CONFIRMED(HttpStatus.CONFLICT, "확정된 출제 프로필로만 문제를 생성할 수 있습니다."),
     EXTRACTION_IN_PROGRESS(HttpStatus.CONFLICT, "기출 문항을 추출하는 중입니다. 완료 후 다시 시도해 주세요."),
     EXTRACTION_NOT_COMPLETED(HttpStatus.CONFLICT, "기출 문항 추출이 완료된 후에 수정할 수 있습니다."),
+    NO_EXTRACTED_PAST_EXAM(HttpStatus.CONFLICT, "추출이 완료된 기출이 없습니다. 기출을 올리고 추출한 뒤 다시 시도해 주세요."),
 
     // 500
     LLM_ERROR(HttpStatus.BAD_GATEWAY, "AI 응답을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."),
