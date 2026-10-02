@@ -110,9 +110,9 @@ class ProblemGenerationServiceTest {
     void 아직_지원하지_않는_유형은_거부한다() throws Exception {
         long profileId = confirmedProfile(WORKSPACE_IDS.incrementAndGet());
 
-        assertThatThrownBy(() -> generationService.generate(profileId, PASSAGE, QuestionType.GRAMMAR_FIX, null, 1L))
+        assertThatThrownBy(() -> generationService.generate(profileId, PASSAGE, QuestionType.SUBJ_SHORT_ANSWER, null, 1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("아직 생성할 수 없는 유형입니다: 어법 오류 수정");
+                .hasMessage("아직 생성할 수 없는 유형입니다: 단답형");
     }
 
     private long confirmedProfile(long workspaceId) throws Exception {

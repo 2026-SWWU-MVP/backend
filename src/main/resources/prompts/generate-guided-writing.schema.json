@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sentence", "korean", "givenWords", "explanation"],
+  "properties": {
+    "sentence": { "type": "string" },
+    "korean": { "type": "string" },
+    "givenWords": { "type": "array", "items": { "type": "string" } },
+    "explanation": { "type": "string" }
+  }
+}

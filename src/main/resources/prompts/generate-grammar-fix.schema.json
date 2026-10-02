@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targets", "explanation"],
+  "properties": {
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["before", "original", "shown"],
+        "properties": {
+          "before": { "type": "string" },
+          "original": { "type": "string" },
+          "shown": { "type": "string" }
+        }
+      }
+    },
+    "explanation": { "type": "string" }
+  }
+}

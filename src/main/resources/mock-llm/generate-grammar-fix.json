@@ -1,0 +1,10 @@
+{
+  "targets": [
+    { "before": "neighborhoods can", "original": "become", "shown": "become" },
+    { "before": "may cause citizens", "original": "to move", "shown": "moving" },
+    { "before": "government and citizens", "original": "is", "shown": "is" },
+    { "before": "an effective way to", "original": "revitalize", "shown": "revitalize" },
+    { "before": "Netherlands to find out", "original": "what", "shown": "what" }
+  ],
+  "explanation": "② cause는 목적격 보어로 to부정사를 쓰므로 moving을 to move로 고쳐야 한다. 나머지는 어법상 맞다."
+}
