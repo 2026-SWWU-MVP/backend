@@ -42,3 +42,13 @@
 결과: `build/experiments/profile/{시험지}.md` — 통계, 지문당 유형 구성, 규칙과 근거 문항, 대표 문항
 
 확인할 것: 규칙이 근거 문항에서 실제로 확인되는지, 일반론이 섞이지 않았는지, 강사가 읽기 쉬운지
+
+## 출제 프로필 강사 검토 실험 (이슈 #13)
+
+저장된 기출 추출 결과 1개로 프로필(v1)을 만들고, 강사 의견 반영(v2) → AI 재검토(v3)를 차례로 실행해 변경점을 확인합니다.
+
+```bash
+EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*ProfileReviewExperiment'
+```
+
+결과: `build/experiments/profile/review-{시험지}.md`

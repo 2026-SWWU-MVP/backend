@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["newRules", "overrideRuleIds", "typeMix"],
+  "properties": {
+    "newRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "category"],
+        "properties": {
+          "text": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["QUESTION_TYPE", "CONDITION", "PASSAGE_USE", "GRAMMAR_POINT", "SCORING", "OTHER"]
+          }
+        }
+      }
+    },
+    "overrideRuleIds": { "type": "array", "items": { "type": "string" } },
+    "typeMix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "count"],
+        "properties": {
+          "type": { "type": "string", "enum": ["SUMMARY_BLANK", "SENTENCE_ORDER", "GRAMMAR_FIX", "GUIDED_WRITING"] },
+          "count": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

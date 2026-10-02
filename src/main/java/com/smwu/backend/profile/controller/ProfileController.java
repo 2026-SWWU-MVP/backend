@@ -1,14 +1,20 @@
 package com.smwu.backend.profile.controller;
 
+import com.smwu.backend.profile.dto.FeedbackRequest;
+import com.smwu.backend.profile.dto.ManualEditRequest;
 import com.smwu.backend.profile.dto.ProfileResponse;
 import com.smwu.backend.profile.dto.ProfileSummaryResponse;
 import com.smwu.backend.profile.service.ProfileAnalysisService;
 import com.smwu.backend.profile.service.ProfileQueryService;
+import com.smwu.backend.profile.service.ProfileRevisionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,7 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 출제 프로필 생성·조회. 확정·AI 재검토·강사 의견·직접 수정은 #13.
+ * 출제 프로필 생성·조회와 강사 검토 루프.
+ * 강사는 DRAFT 프로필을 보고 ① 확정 ② AI 재검토 ③ 의견 입력 ④ 직접 수정 중 하나를 고른다.
+ * ②~④는 새 DRAFT 버전을 돌려주며, changeSummary에 이전 버전 대비 바뀐 점이 들어 있다.
  */
 @RestController
 @RequestMapping("/api")
@@ -25,6 +33,7 @@ public class ProfileController {
 
     private final ProfileAnalysisService analysisService;
     private final ProfileQueryService queryService;
+    private final ProfileRevisionService revisionService;
 
     /**
      * 워크스페이스의 추출 완료 기출로 새 프로필 버전(DRAFT)을 만든다.
@@ -41,8 +50,41 @@ public class ProfileController {
         return queryService.list(workspaceId);
     }
 
+    /** 현재 확정 프로필 (문제 생성에 쓰는 버전). 없으면 404 */
+    @GetMapping("/workspaces/{workspaceId}/profiles/confirmed")
+    public ProfileResponse confirmed(@PathVariable Long workspaceId) {
+        return revisionService.getConfirmed(workspaceId);
+    }
+
     @GetMapping("/profiles/{profileId}")
     public ProfileResponse get(@PathVariable Long profileId) {
         return queryService.get(profileId);
+    }
+
+    /** ① 확정 (OK). 기존 확정본은 SUPERSEDED */
+    @PostMapping("/profiles/{profileId}/confirm")
+    public ProfileResponse confirm(@PathVariable Long profileId) {
+        return revisionService.confirm(profileId);
+    }
+
+    /** ② AI 재검토 → 새 DRAFT. LLM 호출로 수십 초 걸릴 수 있다 */
+    @PostMapping("/profiles/{profileId}/recheck")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProfileResponse recheck(@PathVariable Long profileId) {
+        return revisionService.recheck(profileId);
+    }
+
+    /** ③ 강사 의견 반영 → 새 DRAFT. LLM 호출로 수십 초 걸릴 수 있다 */
+    @PostMapping("/profiles/{profileId}/feedback")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProfileResponse feedback(@PathVariable Long profileId, @Valid @RequestBody FeedbackRequest request) {
+        return revisionService.applyFeedback(profileId, request);
+    }
+
+    /** ④ 직접 수정 (규칙, 지문당 유형 구성) → 새 DRAFT */
+    @PatchMapping("/profiles/{profileId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProfileResponse edit(@PathVariable Long profileId, @Valid @RequestBody ManualEditRequest request) {
+        return revisionService.manualEdit(profileId, request);
     }
 }

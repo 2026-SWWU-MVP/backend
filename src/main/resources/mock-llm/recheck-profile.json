@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {
+      "previousId": "r1",
+      "text": "요약문 빈칸은 본문에 나온 단어를 형태를 바꾸지 않고 빈칸마다 한 단어씩 쓰게 한다.",
+      "category": "CONDITION",
+      "evidenceKeys": ["Q1"]
+    },
+    {
+      "previousId": null,
+      "text": "어구 배열의 [보기]는 8개 안팎의 어구로 나뉘고, 쉼표·마침표까지 맞게 쓰게 한다.",
+      "category": "CONDITION",
+      "evidenceKeys": ["Q2"]
+    }
+  ],
+  "exampleKeys": ["Q1", "Q2"]
+}

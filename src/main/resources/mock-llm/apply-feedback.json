@@ -1,0 +1,12 @@
+{
+  "newRules": [
+    { "text": "이번 시험 서술형은 어구 배열 위주로 출제된다.", "category": "QUESTION_TYPE" }
+  ],
+  "overrideRuleIds": ["r1", "r99"],
+  "typeMix": [
+    { "type": "SUMMARY_BLANK", "count": 1 },
+    { "type": "SENTENCE_ORDER", "count": 2 },
+    { "type": "GRAMMAR_FIX", "count": 0 },
+    { "type": "GUIDED_WRITING", "count": 0 }
+  ]
+}
