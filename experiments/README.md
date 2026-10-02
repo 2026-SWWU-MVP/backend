@@ -52,3 +52,13 @@ EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*ProfileReviewExperiment'
 ```
 
 결과: `build/experiments/profile/review-{시험지}.md`
+
+## 문제 생성 실험 (이슈 #15)
+
+저장된 기출 추출 결과로 학교 규칙을 만들고, 그 시험지의 긴 지문 4개(시험범위 지문 대신)로 요약문 빈칸·어구 배열을 하나씩 만듭니다.
+
+```bash
+EXPERIMENT_FILTER=현대 ./gradlew llmTest --tests '*ProblemGenerationExperiment'
+```
+
+결과: `build/experiments/generate/{시험지}.md` — 첫 시도 통과 / 재생성 후 통과 / 실패 수, 문제별 발문·[조건]·본문·[보기]·정답·해설·재생성 이유

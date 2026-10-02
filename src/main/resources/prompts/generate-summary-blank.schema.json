@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "evidence", "explanation"],
+  "properties": {
+    "summary": { "type": "string" },
+    "evidence": { "type": "string" },
+    "explanation": { "type": "string" }
+  }
+}

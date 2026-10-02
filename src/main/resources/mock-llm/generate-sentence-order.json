@@ -1,0 +1,5 @@
+{
+  "sentence": "However, having a limited budget, the government was unable to do so and had to come up with a new plan.",
+  "chunks": ["However", "having", "a limited budget", "the government", "was unable", "to do so", "and had to come up with", "a new plan"],
+  "explanation": "having a limited budget은 이유를 나타내는 분사구문으로, 주절의 주어 the government 앞에 온다. was unable to do so와 had to come up with가 and로 병렬 연결된다."
+}
