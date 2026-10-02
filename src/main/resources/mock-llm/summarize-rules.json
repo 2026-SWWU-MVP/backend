@@ -1,0 +1,20 @@
+{
+  "rules": [
+    {
+      "text": "요약문 빈칸은 본문에 나온 단어를 형태 변경 없이 한 단어씩 쓰게 한다.",
+      "category": "CONDITION",
+      "evidenceKeys": ["Q1"]
+    },
+    {
+      "text": "어구 배열은 분사구문이 포함된 본문 문장을 [보기] 어구로 나눠 출제한다.",
+      "category": "QUESTION_TYPE",
+      "evidenceKeys": ["Q2"]
+    },
+    {
+      "text": "근거 문항이 없는 규칙은 코드에서 제거된다 (Mock 확인용).",
+      "category": "OTHER",
+      "evidenceKeys": ["Q99"]
+    }
+  ],
+  "exampleKeys": ["Q2", "Q1"]
+}

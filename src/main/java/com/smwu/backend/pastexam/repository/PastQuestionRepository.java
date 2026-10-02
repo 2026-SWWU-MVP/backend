@@ -13,6 +13,8 @@ public interface PastQuestionRepository extends JpaRepository<PastQuestion, Long
 
     List<PastQuestion> findByPastExamIdOrderByOrderNo(Long pastExamId);
 
+    List<PastQuestion> findByPastExamIdIn(Collection<Long> pastExamIds);
+
     /** 목록 화면용 문항 수 집계: [pastExamId, section, count] */
     @Query("select q.pastExamId, q.section, count(q) from PastQuestion q where q.pastExamId in :examIds group by q.pastExamId, q.section")
     List<Object[]> countBySection(Collection<Long> examIds);
