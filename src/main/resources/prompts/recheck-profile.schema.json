@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules", "exampleKeys"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["previousId", "text", "category", "evidenceKeys"],
+        "properties": {
+          "previousId": { "type": ["string", "null"] },
+          "text": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["QUESTION_TYPE", "CONDITION", "PASSAGE_USE", "GRAMMAR_POINT", "SCORING", "OTHER"]
+          },
+          "evidenceKeys": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "exampleKeys": { "type": "array", "items": { "type": "string" } }
+  }
+}

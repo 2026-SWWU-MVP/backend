@@ -151,7 +151,7 @@ public class RuleSummarizer {
         return sb.toString();
     }
 
-    private static List<Long> toIds(List<String> keys, Map<String, PastQuestion> keyed) {
+    static List<Long> toIds(List<String> keys, Map<String, PastQuestion> keyed) {
         if (keys == null) {
             return List.of();
         }

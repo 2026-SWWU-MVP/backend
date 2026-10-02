@@ -112,4 +112,41 @@ public class SchoolProfile extends BaseTimeEntity {
         this.llmModel = llmModel;
         this.createdBy = createdBy;
     }
+
+    /**
+     * 이 버전을 바탕으로 새 DRAFT 버전을 만든다. stats·분석한 기출은 그대로 두고, 바뀐 항목만 넘긴다.
+     *
+     * @param version 워크스페이스의 다음 버전 번호 (이 버전 + 1이 아니라 최신 버전 + 1)
+     */
+    public SchoolProfile revise(int version, ProfileOrigin origin, List<ProfileRule> rules,
+                                Map<QuestionType, Integer> typeMixPerPassage, List<TeacherNote> teacherNotes,
+                                List<Long> exampleQuestionIds, List<String> changeSummary, String llmModel, Long createdBy) {
+        return SchoolProfile.builder()
+                .workspaceId(workspaceId)
+                .version(version)
+                .parentId(id)
+                .origin(origin)
+                .stats(stats)
+                .rules(rules)
+                .typeMixPerPassage(typeMixPerPassage)
+                .teacherNotes(teacherNotes)
+                .changeSummary(changeSummary)
+                .exampleQuestionIds(exampleQuestionIds)
+                .sourceExamIds(sourceExamIds)
+                .llmModel(llmModel)
+                .createdBy(createdBy)
+                .build();
+    }
+
+    /** 강사 확정 (OK). 같은 워크스페이스의 기존 확정본은 호출하는 쪽에서 {@link #supersede()} 한다 */
+    public void confirm(Long userId) {
+        this.status = ProfileStatus.CONFIRMED;
+        this.confirmedBy = userId;
+        this.confirmedAt = LocalDateTime.now();
+    }
+
+    /** 다른 버전이 확정되어 대체됨 */
+    public void supersede() {
+        this.status = ProfileStatus.SUPERSEDED;
+    }
 }
