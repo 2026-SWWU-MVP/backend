@@ -1,0 +1,10 @@
+## 윗글
+{{passage}}
+
+## 문제
+{{stem}}
+
+[조건]
+{{conditions}}
+
+{{body}}

@@ -50,7 +50,20 @@ class ProblemGeneratorTest {
         }
     };
 
-    private final ProblemGenerator generator = new ProblemGenerator(fakeLlm, new PromptLoader(JsonMapper.builder().build()),
+    /** 블라인드 풀이용 가짜 LLM: 넣은 순서대로 풀이를 돌려주고, 마지막 풀이는 계속 돌려준다 */
+    private final Deque<BlindSolver.SummaryBlankSolution> blindSolutions = new ArrayDeque<>();
+    private final LlmClient blindLlm = new LlmClient() {
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> LlmResult<T> generate(LlmRequest request, Class<T> responseType) {
+            requests.add(request);
+            Object next = blindSolutions.size() > 1 ? blindSolutions.poll() : blindSolutions.peek();
+            return new LlmResult<>((T) next, "{}", "fake-model", 0, 0);
+        }
+    };
+
+    private final PromptLoader prompts = new PromptLoader(JsonMapper.builder().build());
+    private final ProblemGenerator generator = new ProblemGenerator(fakeLlm, prompts, new BlindSolver(blindLlm, prompts),
             List.of(new SummaryBlankHandler(), new SentenceOrderHandler()));
 
     private final GenerationContext context = new GenerationContext(9L,
@@ -125,6 +138,59 @@ class ProblemGeneratorTest {
         assertThat(outcome.attemptFailures()).containsOnly("AI 호출 실패: HTTP 500");
     }
 
+    private static final SummaryBlankHandler.Draft BLANK_DRAFT = new SummaryBlankHandler.Draft(
+            "Aging neighborhoods may turn [[lifeless]] and lose [[citizens]] over time as they decline.",
+            "As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away.", "해설");
+    private static final BlindSolver.SummaryBlankSolution AMBIGUOUS = new BlindSolver.SummaryBlankSolution(List.of(
+            new BlindSolver.BlankSolution("old", List.of()),
+            new BlindSolver.BlankSolution("citizens", List.of("residents", "government"))));
+    private static final BlindSolver.SummaryBlankSolution CLEAR = new BlindSolver.SummaryBlankSolution(List.of(
+            new BlindSolver.BlankSolution("lifeless", List.of()),
+            new BlindSolver.BlankSolution("citizens", List.of())));
+
+    @Test
+    void 블라인드_풀이가_계속_어긋나면_3번_시도_후_NEEDS_REVIEW() {
+        for (int i = 0; i < 3; i++) {
+            responses.add(BLANK_DRAFT);
+        }
+        blindSolutions.add(AMBIGUOUS);
+
+        ProblemGenerator.Outcome outcome = generator.generate(GenerationContext.empty(), PASSAGE, QuestionType.SUMMARY_BLANK,
+                ProblemOptions.defaults(), 1L);
+
+        assertThat(outcome.status()).isEqualTo(ValidationStatus.NEEDS_REVIEW);
+        assertThat(outcome.attempts()).isEqualTo(3);
+        assertThat(outcome.problem()).isNotNull();
+        assertThat(outcome.attemptFailures()).hasSize(3).allSatisfy(f -> assertThat(f).contains("정답이 하나만 되도록"));
+        // residents는 윗글에 없어 무시되고, government는 윗글에 있으므로 다른 정답 후보로 잡힌다
+        assertThat(outcome.checks()).filteredOn(c -> !c.passed()).extracting(c -> c.name())
+                .containsExactly("BLIND_SOLVE", "UNIQUE_ANSWER");
+        assertThat(outcome.checks()).filteredOn(c -> c.name().equals("BLIND_SOLVE")).singleElement()
+                .satisfies(c -> assertThat(c.detail()).contains("(1) 정답 lifeless / AI 풀이 old"));
+        // 블라인드 풀이 프롬프트에는 정답이 없다
+        LlmRequest blindRequest = requests.get(requests.size() - 1);
+        assertThat(blindRequest.task()).isEqualTo("blind-solve-summary-blank");
+        assertThat(blindRequest.userPrompt()).contains("(1) __________", "윗글의 내용을 요약할 때").doesNotContain("lifeless and lose");
+    }
+
+    @Test
+    void 블라인드_풀이로_애매함이_발견되면_다시_생성해서_고친다() {
+        responses.add(BLANK_DRAFT);
+        responses.add(BLANK_DRAFT);
+        blindSolutions.add(AMBIGUOUS);
+        blindSolutions.add(CLEAR);
+
+        ProblemGenerator.Outcome outcome = generator.generate(GenerationContext.empty(), PASSAGE, QuestionType.SUMMARY_BLANK,
+                ProblemOptions.defaults(), 1L);
+
+        assertThat(outcome.status()).isEqualTo(ValidationStatus.PASSED);
+        assertThat(outcome.attempts()).isEqualTo(2);
+        assertThat(outcome.attemptFailures()).singleElement().asString().contains("government도 정답이 될 수 있다");
+        // 두 번째 생성 프롬프트에 애매했던 이유가 들어간다
+        assertThat(requests).filteredOn(r -> r.task().equals("generate-summary-blank")).last()
+                .satisfies(r -> assertThat(r.userPrompt()).contains("이전 시도에서 지켜지지 않은 점", "government도 정답이 될 수 있다"));
+    }
+
     @Test
     void 근거_문장이_윗글에_없으면_실패() {
         responses.add(new SummaryBlankHandler.Draft(
@@ -133,6 +199,11 @@ class ProblemGeneratorTest {
         responses.add(new SummaryBlankHandler.Draft(
                 "Aging neighborhoods may turn [[lifeless]] and lose [[citizens]] over time as they decline.",
                 "As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away.", "해설"));
+
+        // 대소문자만 다른 답은 같은 답, 윗글에 없는 후보(residents)는 "형태 변경 없이" 조건을 만족하지 않으므로 무시
+        blindSolutions.add(new BlindSolver.SummaryBlankSolution(List.of(
+                new BlindSolver.BlankSolution("Lifeless", List.of("residents")),
+                new BlindSolver.BlankSolution("citizens", List.of("residents")))));
 
         ProblemGenerator.Outcome outcome = generator.generate(GenerationContext.empty(), PASSAGE, QuestionType.SUMMARY_BLANK,
                 ProblemOptions.defaults(), 1L);

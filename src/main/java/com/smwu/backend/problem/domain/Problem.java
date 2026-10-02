@@ -3,6 +3,7 @@ package com.smwu.backend.problem.domain;
 import com.smwu.backend.common.domain.BaseTimeEntity;
 import com.smwu.backend.pastexam.extraction.QuestionType;
 import com.smwu.backend.problem.type.AssembledProblem;
+import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.problem.type.ProblemAnswer;
 import com.smwu.backend.problem.type.ProblemOptions;
 import jakarta.persistence.Column;
@@ -48,6 +49,13 @@ public class Problem extends BaseTimeEntity {
 
     /** 원문 지문. TODO(#12): 시험범위 지문(Passage) 엔티티와 연결 */
     private Long passageId;
+
+    /** 생성할 때 쓴 지문 제목 사본 */
+    private String passageTitle;
+
+    /** 생성할 때 쓴 지문 본문 사본. 지문이 나중에 수정돼도 이 문제를 만든 원문이 남고, 개별 재생성에 쓴다 */
+    @JdbcTypeCode(SqlTypes.LONG32VARCHAR)
+    private String passageText;
 
     /** 생성 작업 (#17). 단건 생성이면 null */
     private Long generationJobId;
@@ -103,16 +111,45 @@ public class Problem extends BaseTimeEntity {
 
     private String llmModel;
 
-    public static Problem generated(Long workspaceId, Long profileId, Long passageId, Long generationJobId,
+    public static Problem generated(Long workspaceId, Long profileId, PassageSource passage, Long generationJobId,
                                     QuestionType type, ProblemOptions options, AssembledProblem assembled,
                                     ValidationStatus validationStatus, ValidationReport report, String llmModel) {
         Problem p = new Problem();
         p.workspaceId = workspaceId;
         p.profileId = profileId;
-        p.passageId = passageId;
+        p.passageId = passage.passageId();
+        p.passageTitle = passage.title();
+        p.passageText = passage.text();
         p.generationJobId = generationJobId;
         p.type = type;
         p.options = options;
+        p.applyGenerated(assembled, validationStatus, report, llmModel);
+        return p;
+    }
+
+    /** 같은 지문·유형·옵션으로 다시 생성한 결과로 내용을 바꾼다 (ID는 유지, 검수 상태는 초기화) */
+    public void regenerated(AssembledProblem assembled, ValidationStatus validationStatus, ValidationReport report,
+                            String llmModel) {
+        this.stem = null;
+        this.conditions = new ArrayList<>();
+        this.body = null;
+        this.choices = new ArrayList<>();
+        this.answer = null;
+        this.answerText = null;
+        this.explanation = null;
+        this.evidence = null;
+        this.edited = false;
+        this.reviewedBy = null;
+        applyGenerated(assembled, validationStatus, report, llmModel);
+    }
+
+    public PassageSource passageSource() {
+        return new PassageSource(passageId, passageTitle, passageText);
+    }
+
+    private void applyGenerated(AssembledProblem assembled, ValidationStatus validationStatus, ValidationReport report,
+                                String llmModel) {
+        Problem p = this;
         if (assembled != null) {
             p.stem = assembled.stem();
             p.conditions = new ArrayList<>(assembled.conditions());
@@ -127,6 +164,5 @@ public class Problem extends BaseTimeEntity {
         p.validationReport = report;
         p.reviewStatus = ReviewStatus.DRAFT;
         p.llmModel = llmModel;
-        return p;
     }
 }

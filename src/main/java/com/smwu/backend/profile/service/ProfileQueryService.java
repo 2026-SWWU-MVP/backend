@@ -90,7 +90,7 @@ public class ProfileQueryService {
      * TODO(#10): WorkspaceAccessChecker로 현재 사용자의 학원 워크스페이스인지 확인 (아니면 404).
      * 기출 API(PastExamService.checkWorkspaceAccess)와 같은 시점에 연결한다.
      */
-    void checkWorkspaceAccess(Long workspaceId) {
+    public void checkWorkspaceAccess(Long workspaceId) {
     }
 
     private static RuleView toRuleView(ProfileRule rule, Map<Long, PastQuestion> questions, Map<Long, PastExam> exams) {

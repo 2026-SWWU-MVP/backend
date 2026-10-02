@@ -94,13 +94,15 @@ class ProblemGenerationExperiment {
                 .limit(PASSAGES)
                 .toList();
 
-        ProblemGenerator generator = new ProblemGenerator(llm, prompts, List.of(new SummaryBlankHandler(), new SentenceOrderHandler()));
+        ProblemGenerator generator = new ProblemGenerator(llm, prompts, new BlindSolver(llm, prompts),
+                List.of(new SummaryBlankHandler(), new SentenceOrderHandler()));
         StringBuilder md = new StringBuilder("# " + name + " 문제 생성 실험\n\n");
         md.append("학교 규칙 ").append(rules.rules().size()).append("개, 대표 문항 ").append(context.examples().size()).append("개 사용\n\n");
         int total = 0;
         int firstTry = 0;
         int retried = 0;
         int failed = 0;
+        int needsReview = 0;
         for (int i = 0; i < passages.size(); i++) {
             PassageSource passage = passages.get(i);
             md.append("---\n\n## 지문 ").append(i + 1).append(" (").append(TextNormalizer.wordCount(passage.text())).append("단어)\n\n> ")
@@ -115,6 +117,8 @@ class ProblemGenerationExperiment {
                 total++;
                 if (outcome.status() == ValidationStatus.FAILED) {
                     failed++;
+                } else if (outcome.status() == ValidationStatus.NEEDS_REVIEW) {
+                    needsReview++;
                 } else if (outcome.attempts() == 1) {
                     firstTry++;
                 } else {
@@ -124,8 +128,8 @@ class ProblemGenerationExperiment {
                 System.out.println(job[0] + " 지문" + (i + 1) + ": " + outcome.status() + " (시도 " + outcome.attempts() + ", " + ms + "ms)");
             }
         }
-        md.insert(md.indexOf("\n\n") + 2, "| 생성 | 첫 시도 통과 | 재생성 후 통과 | 실패 |\n|---|---|---|---|\n| " + total + " | "
-                + firstTry + " | " + retried + " | " + failed + " |\n\n");
+        md.insert(md.indexOf("\n\n") + 2, "| 생성 | 첫 시도 통과 | 재생성 후 통과 | 확인 필요(블라인드 풀이) | 실패 |\n"
+                + "|---|---|---|---|---|\n| " + total + " | " + firstTry + " | " + retried + " | " + needsReview + " | " + failed + " |\n\n");
         Files.writeString(OUTPUT_DIR.resolve(name + ".md"), md.toString(), StandardCharsets.UTF_8);
         System.out.println("결과: " + OUTPUT_DIR.toAbsolutePath());
     }
@@ -144,6 +148,15 @@ class ProblemGenerationExperiment {
                 md.append("\n[보기] ").append(String.join(" / ", p.choices())).append('\n');
             }
             md.append("\n정답: ").append(p.answerText()).append("  \n해설: ").append(p.explanation()).append("\n\n");
+        }
+        List<String> blindIssues = outcome.checks().stream()
+                .filter(c -> !c.passed() && (c.name().equals("BLIND_SOLVE") || c.name().equals("UNIQUE_ANSWER")))
+                .map(c -> c.detail())
+                .toList();
+        if (!blindIssues.isEmpty()) {
+            md.append("블라인드 풀이:\n");
+            blindIssues.forEach(d -> md.append("- ").append(d).append('\n'));
+            md.append('\n');
         }
         if (!outcome.attemptFailures().isEmpty()) {
             md.append("재생성 이유:\n");
