@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sentence", "chunks", "explanation"],
+  "properties": {
+    "sentence": { "type": "string" },
+    "chunks": { "type": "array", "items": { "type": "string" } },
+    "explanation": { "type": "string" }
+  }
+}

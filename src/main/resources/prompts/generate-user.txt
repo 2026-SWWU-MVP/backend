@@ -1,0 +1,18 @@
+## 이번 시험 정보 (강사 제공, 우선 적용)
+{{teacherInfo}}
+
+## 학교 기출 출제 규칙
+{{pastExamRules}}
+
+## 학교 기출 예시 문항
+{{examples}}
+
+## 윗글 (문제를 만들 지문)
+{{passage}}
+
+## 만들 문제: {{typeLabel}}
+{{typeInstructions}}
+
+## 이번 문제의 요구 사항
+{{requirements}}
+{{retryFeedback}}
