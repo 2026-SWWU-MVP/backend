@@ -615,10 +615,16 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 
 | Method | Endpoint | 설명 |
 |---|---|---|
-| POST | `/api/workspaces/{id}/materials` | 시험범위 자료 업로드 → 지문 분리 |
-| GET | `/api/workspaces/{id}/materials` | 자료 목록 |
-| GET | `/api/materials/{id}/passages` | 지문 목록 |
-| PATCH | `/api/passages/{id}` | 지문 수정 |
+| POST | `/api/workspaces/{id}/materials` | 시험범위 PDF 업로드 (multipart: file, title) → 202, 백그라운드로 지문 분리 (LLM, 40페이지 이하) |
+| POST | `/api/workspaces/{id}/materials/text` | 지문 텍스트 붙여넣기 `{title, text}` → 201, `---` 줄로 구분해 바로 지문 저장 |
+| GET | `/api/workspaces/{id}/materials` | 자료 목록 (상태, 지문 수) |
+| GET | `/api/materials/{id}` | 자료 상세. 분리 중 폴링용 (status: SPLITTING → SPLIT/FAILED), 분리 경고 |
+| POST | `/api/materials/{id}/split` | PDF 지문 다시 나누기 → 202 |
+| DELETE | `/api/materials/{id}` | 자료 삭제 (만든 문제는 지문 사본이 있어 유지) |
+| GET | `/api/materials/{id}/passages` | 지문 목록 (단어 수 포함) |
+| POST | `/api/materials/{id}/passages` | 지문 직접 추가 |
+| PATCH | `/api/passages/{id}` | 지문 수정 (제목, 출처, 본문, 순서) |
+| DELETE | `/api/passages/{id}` | 지문 삭제 |
 | POST | `/api/workspaces/{id}/generation-jobs` | 생성 작업 시작 → 202 (확정 프로필만 허용) |
 | GET | `/api/generation-jobs/{id}` | 진행률 조회 (프론트에서 2초 간격 폴링) |
 | GET | `/api/generation-jobs/{id}/problems` | 생성 문항 목록 |

@@ -1,0 +1,2 @@
+첨부한 시험범위 자료({{filename}}, {{pageCount}}페이지)의 영어 지문을 빠짐없이 나누어 옮기시오.
+첨부 구성: {{attachments}}

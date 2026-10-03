@@ -64,3 +64,13 @@ EXPERIMENT_FILTER=현대 EXPERIMENT_TYPES=GRAMMAR_FIX,GUIDED_WRITING ./gradlew l
 ```
 
 결과: `build/experiments/generate/{시험지}.md` — 첫 시도 통과 / 재생성 후 통과 / 실패 수, 문제별 발문·[조건]·본문·[보기]·정답·해설·재생성 이유
+
+## 시험범위 PDF 지문 분리 실험 (이슈 #12)
+
+PDF에서 영어 지문만 골라내는지 확인합니다 (문항 번호, 한국어 발문, 선택지, 어휘 주석 제외).
+
+```bash
+EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*PassageSplitExperiment'
+```
+
+결과: `build/experiments/split/{파일}.md`. 기출 PDF로 실험하면 어법 문제용으로 틀리게 바꾼 문장이 그대로 나오므로, 실제 서비스에서는 교과서·모의고사 원문 PDF를 시험범위 자료로 올려야 합니다.
