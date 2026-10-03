@@ -47,7 +47,7 @@ public class Problem extends BaseTimeEntity {
     /** 생성에 쓴 확정 프로필 버전 */
     private Long profileId;
 
-    /** 원문 지문. TODO(#12): 시험범위 지문(Passage) 엔티티와 연결 */
+    /** 원문 시험범위 지문(Passage) ID. 지문이 삭제돼도 아래 사본이 남는다 */
     private Long passageId;
 
     /** 생성할 때 쓴 지문 제목 사본 */

@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["passages", "warnings"],
+  "properties": {
+    "passages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "sourceLabel", "text"],
+        "properties": {
+          "title": { "type": ["string", "null"] },
+          "sourceLabel": { "type": ["string", "null"] },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}
