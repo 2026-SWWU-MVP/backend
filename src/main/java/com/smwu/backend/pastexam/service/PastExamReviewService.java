@@ -15,7 +15,9 @@ import com.smwu.backend.pastexam.extraction.ExtractionChecker;
 import com.smwu.backend.pastexam.extraction.ExtractionChecker.Issue;
 import com.smwu.backend.pastexam.repository.PastPassageRepository;
 import com.smwu.backend.pastexam.repository.PastQuestionRepository;
+import com.smwu.backend.pastexam.event.PastExamChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,7 @@ public class PastExamReviewService {
     private final PastExamService pastExamService;
     private final PastPassageRepository pastPassageRepository;
     private final PastQuestionRepository pastQuestionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public ExtractionResultResponse getResult(Long examId) {
@@ -60,6 +63,7 @@ public class PastExamReviewService {
                 request.body(), request.conditions(), request.choices(), request.answer(), request.points(),
                 Boolean.TRUE.equals(request.clearPoints()));
         pastQuestionRepository.flush();
+        eventPublisher.publishEvent(new PastExamChangedEvent(exam.getId()));
         return buildResult(exam);
     }
 
@@ -78,7 +82,7 @@ public class PastExamReviewService {
     private ExtractionResultResponse buildResult(PastExam exam) {
         List<PastPassage> passages = pastPassageRepository.findByPastExamIdOrderByOrderNo(exam.getId());
         List<PastQuestion> questions = pastQuestionRepository.findByPastExamIdOrderByOrderNo(exam.getId());
-        List<Issue> issues = ExtractionChecker.check(toExtractedExam(passages, questions, exam.getWarnings()));
+        List<Issue> issues = ExtractionChecker.check(ExtractedExam.from(passages, questions, exam.getWarnings()));
 
         List<PassageView> passageViews = passages.stream()
                 .map(p -> PassageView.of(p, issues.stream()
@@ -99,14 +103,5 @@ public class PastExamReviewService {
 
         return new ExtractionResultResponse(exam.getId(), exam.getStatus(), passageViews, questionViews, examIssues,
                 List.copyOf(exam.getWarnings()), issues.size());
-    }
-
-    private static ExtractedExam toExtractedExam(List<PastPassage> passages, List<PastQuestion> questions, List<String> warnings) {
-        return new ExtractedExam(
-                passages.stream().map(p -> new ExtractedExam.Passage(p.getCode(), p.getTitle(), p.getText())).toList(),
-                questions.stream().map(q -> new ExtractedExam.Question(q.getNo(), q.getSection(), q.getType(),
-                        q.getPassageCodes(), q.getStem(), q.getBody(), q.getConditions(), q.getChoices(),
-                        q.getAnswer(), q.getPoints())).toList(),
-                warnings);
     }
 }

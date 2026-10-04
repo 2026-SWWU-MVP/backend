@@ -13,7 +13,9 @@ import com.smwu.backend.pastexam.extraction.ExtractedExam.QuestionSection;
 import com.smwu.backend.pastexam.repository.PastExamRepository;
 import com.smwu.backend.pastexam.repository.PastPassageRepository;
 import com.smwu.backend.pastexam.repository.PastQuestionRepository;
+import com.smwu.backend.pastexam.event.PastExamDeletedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -36,6 +38,7 @@ public class PastExamService {
     private final PastQuestionRepository pastQuestionRepository;
     private final PastPassageRepository pastPassageRepository;
     private final FileStorage fileStorage;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public PastExamResponse upload(Long workspaceId, MultipartFile file, UploadPastExamRequest request) {
@@ -97,6 +100,7 @@ public class PastExamService {
         pastQuestionRepository.deleteByPastExamId(examId);
         pastPassageRepository.deleteByPastExamId(examId);
         pastExamRepository.delete(exam);
+        eventPublisher.publishEvent(new PastExamDeletedEvent(examId));
         String filePath = exam.getFilePath();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override

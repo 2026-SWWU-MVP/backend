@@ -8,7 +8,9 @@ import com.smwu.backend.pastexam.extraction.ExtractedExam;
 import com.smwu.backend.pastexam.repository.PastExamRepository;
 import com.smwu.backend.pastexam.repository.PastPassageRepository;
 import com.smwu.backend.pastexam.repository.PastQuestionRepository;
+import com.smwu.backend.pastexam.event.PastExamChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class PastExamResultWriter {
     private final PastExamRepository pastExamRepository;
     private final PastPassageRepository pastPassageRepository;
     private final PastQuestionRepository pastQuestionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void saveResult(Long examId, LlmResult<ExtractedExam> result, long elapsedMillis) {
@@ -62,6 +65,7 @@ public class PastExamResultWriter {
 
         exam.completeExtraction(extracted.warnings(), result.model(), result.inputTokens(), result.outputTokens(),
                 elapsedMillis, result.rawText());
+        eventPublisher.publishEvent(new PastExamChangedEvent(examId));
     }
 
     @Transactional
