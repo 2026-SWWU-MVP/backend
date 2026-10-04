@@ -260,6 +260,7 @@ C학원: 건대부고 1학년 2025 1학기 중간 (A와 같은 회차) ┘      
 - 회차 = `(schoolId, grade, examYear, semester, examType)`. 학원이 기출을 올릴 때 워크스페이스의 학교·학년과 입력한 연도·학기·시험 종류로 정해집니다.
 - 같은 회차를 여러 학원이 올리면 **회차는 하나**로 셉니다 (통계가 부풀지 않게). 회차 통계는 그 회차의 기여 중 점검 이슈가 가장 적은 추출 결과로 정하고, 기여 학원 수만 늘립니다.
 - 기출 추출이 끝나면 자동으로 학교 DB에 기여합니다. 기출을 삭제하면 그 기여도 빠집니다.
+- 구현: 기출 쪽은 `PastExamChangedEvent`(추출 저장, 문항 수정) / `PastExamDeletedEvent`만 발행하고, `SchoolExamContributionService`가 같은 트랜잭션에서 기여를 다시 계산합니다. 공유 통계(`ExamRoundStats`)에는 [조건] 문구도 넣지 않습니다 (시험지 원문이므로).
 
 **경향 누적**
 
@@ -644,6 +645,7 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 | POST | `/api/workspaces` | 워크스페이스 추가 `{ schoolId, grade }` |
 | GET | `/api/workspaces/{id}` | 워크스페이스 상세 |
 | DELETE | `/api/workspaces/{id}` 🔒 | 워크스페이스 삭제 (기출·시험범위·프로필이 있으면 409 `WORKSPACE_NOT_EMPTY`) |
+| GET | `/api/schools/{id}/exams?grade=1` | 학교 DB의 기출 회차 (최신순, 통계·기여 학원 수만. 원문·학원 정보 없음) |
 
 - 학교 목록이 비어 있으면 시작할 때 `seed/schools.json`(시연용 학교와 별칭)을 넣습니다.
 - 회원·학원(#6, #7) 전까지는 현재 학원을 1번으로 봅니다 (`CurrentAcademy`, TODO(#6)). 카드 요약(기출 수, 프로필 상태)은 #14에서 추가합니다.

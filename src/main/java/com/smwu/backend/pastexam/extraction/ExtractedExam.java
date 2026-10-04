@@ -1,5 +1,8 @@
 package com.smwu.backend.pastexam.extraction;
 
+import com.smwu.backend.pastexam.domain.PastPassage;
+import com.smwu.backend.pastexam.domain.PastQuestion;
+
 import java.util.List;
 
 /**
@@ -14,6 +17,15 @@ public record ExtractedExam(
         List<Question> questions,
         List<String> warnings
 ) {
+
+    /** DB에 저장된(강사가 고쳤을 수 있는) 지문·문항을 점검기 입력 형태로 되돌린다 */
+    public static ExtractedExam from(List<PastPassage> passages, List<PastQuestion> questions, List<String> warnings) {
+        return new ExtractedExam(
+                passages.stream().map(p -> new Passage(p.getCode(), p.getTitle(), p.getText())).toList(),
+                questions.stream().map(q -> new Question(q.getNo(), q.getSection(), q.getType(), q.getPassageCodes(),
+                        q.getStem(), q.getBody(), q.getConditions(), q.getChoices(), q.getAnswer(), q.getPoints())).toList(),
+                warnings);
+    }
 
     /**
      * @param id    문항이 참조하는 지문 ID (P1, P2 ...)
