@@ -18,4 +18,6 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
     @Query("update Material m set m.status = :failed, m.failureReason = :reason where m.status = :splitting")
     int failInterrupted(@Param("splitting") MaterialStatus splitting, @Param("failed") MaterialStatus failed,
                         @Param("reason") String reason);
+
+    boolean existsByWorkspaceId(Long workspaceId);
 }

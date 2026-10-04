@@ -14,4 +14,6 @@ public interface SchoolProfileRepository extends JpaRepository<SchoolProfile, Lo
     Optional<SchoolProfile> findTopByWorkspaceIdOrderByVersionDesc(Long workspaceId);
 
     List<SchoolProfile> findByWorkspaceIdAndStatus(Long workspaceId, ProfileStatus status);
+
+    boolean existsByWorkspaceId(Long workspaceId);
 }

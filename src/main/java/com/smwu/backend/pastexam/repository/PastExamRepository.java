@@ -19,4 +19,6 @@ public interface PastExamRepository extends JpaRepository<PastExam, Long> {
     int failInterrupted(@Param("extracting") PastExamStatus extracting,
                         @Param("failed") PastExamStatus failed,
                         @Param("reason") String reason);
+
+    boolean existsByWorkspaceId(Long workspaceId);
 }
