@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,9 +79,11 @@ public class GenerationJobService {
         }
 
         GenerationJob job = jobRepository.save(GenerationJob.start(workspaceId, profileContext.profile().getId(), plan));
-        for (Slot slot : plan.slots()) {
-            slotRunner.run(job.getId(), slot, profileContext, passages.get(slot.passageId()));
-        }
+        // 같은 지문·같은 유형은 한 묶음으로 차례로 만들어 문항끼리 겹치지 않게 한다
+        Map<String, List<Slot>> groups = new LinkedHashMap<>();
+        plan.slots().forEach(slot -> groups.computeIfAbsent(slot.passageId() + ":" + slot.type(), k -> new ArrayList<>()).add(slot));
+        groups.values().forEach(group ->
+                slotRunner.run(job.getId(), group, profileContext, passages.get(group.get(0).passageId())));
         log.info("문제 생성 작업 {} 시작: 지문 {}개, {}문항", job.getId(), plan.passageIds().size(), plan.total());
         return GenerationJobResponse.of(job, 0, 0, 0);
     }

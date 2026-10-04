@@ -7,6 +7,7 @@ import com.smwu.backend.problem.domain.Problem;
 import com.smwu.backend.problem.domain.ValidationReport;
 import com.smwu.backend.problem.repository.ProblemRepository;
 import com.smwu.backend.problem.service.GenerationContextFactory.ProfileContext;
+import com.smwu.backend.problem.type.AssembledProblem;
 import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.problem.type.ProblemOptions;
 import com.smwu.backend.profile.domain.SchoolProfile;
@@ -15,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.List;
 
 /**
  * 확정 프로필로 지문 1개에 대해 문제 1개를 만들어 저장한다. 생성 작업(#17)은 문항마다 이 서비스를 부른다.
@@ -42,11 +45,17 @@ public class ProblemGenerationService {
      */
     public Problem generate(ProfileContext profileContext, PassageSource passage, QuestionType type, ProblemOptions options,
                             Long generationJobId, Integer jobSlot, long seed) {
+        return generate(profileContext, passage, type, options, generationJobId, jobSlot, seed, List.of());
+    }
+
+    /** @param existing 같은 지문·유형으로 이미 만든 문항 (정답이 겹치지 않게 한다) */
+    public Problem generate(ProfileContext profileContext, PassageSource passage, QuestionType type, ProblemOptions options,
+                            Long generationJobId, Integer jobSlot, long seed, List<AssembledProblem> existing) {
         if (!generator.supports(type)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "아직 생성할 수 없는 유형입니다: " + type.getLabel());
         }
         ProblemOptions resolved = (options == null ? ProblemOptions.defaults() : options).withDefaults();
-        ProblemGenerator.Outcome outcome = generator.generate(profileContext.context(), passage, type, resolved, seed);
+        ProblemGenerator.Outcome outcome = generator.generate(profileContext.context(), passage, type, resolved, seed, existing);
 
         Problem problem = Problem.generated(profileContext.profile().getWorkspaceId(), profileContext.profile().getId(),
                 passage, generationJobId, type, resolved, outcome.problem(), outcome.status(), report(outcome), outcome.model());
@@ -68,8 +77,14 @@ public class ProblemGenerationService {
         SchoolProfile profile = profileQueryService.getProfile(problem.getProfileId());
         GenerationContext context = contextFactory.build(profile);
         long seed = problem.getId() * 31 + (problem.getValidationReport() == null ? 0 : problem.getValidationReport().attempts());
+        List<AssembledProblem> siblings = problem.getGenerationJobId() == null ? List.of()
+                : problemRepository.findByGenerationJobIdAndPassageIdAndType(problem.getGenerationJobId(), problem.getPassageId(),
+                        problem.getType()).stream()
+                .filter(p -> !p.getId().equals(problemId) && p.getAnswerText() != null)
+                .map(Problem::toAssembled)
+                .toList();
         ProblemGenerator.Outcome outcome = generator.generate(context, problem.passageSource(), problem.getType(),
-                problem.getOptions() == null ? ProblemOptions.defaults() : problem.getOptions(), seed);
+                problem.getOptions() == null ? ProblemOptions.defaults() : problem.getOptions(), seed, siblings);
 
         return new TransactionTemplate(transactionManager).execute(status -> {
             Problem current = problemRepository.findById(problemId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));

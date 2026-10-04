@@ -74,3 +74,23 @@ EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*PassageSplitExperiment'
 ```
 
 결과: `build/experiments/split/{파일}.md`. 기출 PDF로 실험하면 어법 문제용으로 틀리게 바꾼 문장이 그대로 나오므로, 실제 서비스에서는 교과서·모의고사 원문 PDF를 시험범위 자료로 올려야 합니다.
+
+## 전체 흐름 점검 + 발표용 수치 (이슈 #23)
+
+API를 실제 순서대로 호출합니다: 기출 업로드 → 추출 → 프로필 v1 → 강사 의견 반영 v2 → 확정 → 시험범위 PDF 업로드 → 지문 분리 → 생성 작업(약 50문항). 약 10~15분 걸립니다.
+
+```bash
+./gradlew llmTest --tests '*EndToEndExperiment'
+# 기출, 시험범위, 목표 문항 수 바꾸기
+EXAM_FILTER=현대 MATERIAL_FILTER=압구정 TARGET_PROBLEMS=30 ./gradlew llmTest --tests '*EndToEndExperiment'
+```
+
+결과: `build/experiments/e2e/{기출}.md`
+
+- 단계별 소요 시간
+- 규칙 검증 통과율 (첫 시도 / 최종)
+- 검증 적용 전 vs 후: 첫 시도 결과 중 검증이 걸러낸 비율, 재생성 이유
+- 유형 구성 일치도: 확정 프로필의 지문당 유형 구성 × 지문 수 대비 규칙 통과 문항
+- 검수표: '정답 오류' 칸을 사람이 채워 통과 문항의 정답 오류율을 구합니다
+
+결과 정리: [RESULTS-e2e.md](RESULTS-e2e.md)
