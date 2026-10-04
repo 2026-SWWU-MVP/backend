@@ -1,7 +1,9 @@
 package com.smwu.backend.schooldb.controller;
 
 import com.smwu.backend.schooldb.dto.SchoolTrendResponse;
+import com.smwu.backend.schooldb.dto.SchoolTrendSummaryResponse;
 import com.smwu.backend.schooldb.service.SchoolTrendService;
+import com.smwu.backend.schooldb.service.SchoolTrendSummaryService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SchoolTrendController {
 
     private final SchoolTrendService trendService;
+    private final SchoolTrendSummaryService summaryService;
 
     @GetMapping("/schools/{schoolId}/trends")
     public SchoolTrendResponse trends(@PathVariable Long schoolId, @RequestParam @Min(1) @Max(3) int grade) {
@@ -30,5 +33,16 @@ public class SchoolTrendController {
     @GetMapping("/workspaces/{workspaceId}/school-trends")
     public SchoolTrendResponse workspaceTrends(@PathVariable Long workspaceId) {
         return trendService.forWorkspace(workspaceId);
+    }
+
+    /** 경향 요약 문장 (LLM). 회차 구성이 바뀌었을 때만 새로 만들어 수 초 걸리고, 그 외에는 캐시 */
+    @GetMapping("/schools/{schoolId}/trends/summary")
+    public SchoolTrendSummaryResponse summary(@PathVariable Long schoolId, @RequestParam @Min(1) @Max(3) int grade) {
+        return summaryService.summary(schoolId, grade);
+    }
+
+    @GetMapping("/workspaces/{workspaceId}/school-trends/summary")
+    public SchoolTrendSummaryResponse workspaceSummary(@PathVariable Long workspaceId) {
+        return summaryService.forWorkspace(workspaceId);
     }
 }

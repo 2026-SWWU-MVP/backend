@@ -94,3 +94,13 @@ EXAM_FILTER=현대 MATERIAL_FILTER=압구정 TARGET_PROBLEMS=30 ./gradlew llmTes
 - 검수표: '정답 오류' 칸을 사람이 채워 통과 문항의 정답 오류율을 구합니다
 
 결과 정리: [RESULTS-e2e.md](RESULTS-e2e.md)
+
+## 학교 경향 요약 실험 (이슈 #40)
+
+기출 추출 실험 결과를 학교별 1회분 회차 통계로 바꿔 요약하고, 세 시험지를 한 학교의 연속 회차로 가정한 합성 사례도 요약합니다. 입력은 통계 숫자뿐입니다 (원문 없음).
+
+```bash
+./gradlew llmTest --tests '*SchoolTrendSummaryExperiment'
+```
+
+결과: `build/experiments/trend/RESULTS.md`, 정리: [RESULTS-trend.md](RESULTS-trend.md)
