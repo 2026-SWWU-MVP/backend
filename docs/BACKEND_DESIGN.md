@@ -638,12 +638,15 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 
 | Method | Endpoint | 설명 |
 |---|---|---|
-| GET | `/api/schools?query=건대` | 공용 학교 검색 |
-| POST | `/api/schools` | 학교 등록 (검색 결과에 없을 때) |
+| GET | `/api/schools?query=건대` | 공용 학교 검색 (이름·별칭 부분 일치, 공백·대소문자 무시, 최대 20개) |
+| POST | `/api/schools` | 학교 등록 (검색 결과에 없을 때) `{ name, region, aliases }`. 이름·별칭이 겹치면 409 `SCHOOL_DUPLICATED` |
 | GET | `/api/workspaces` | 내 학원의 워크스페이스 카드 목록 (기출 수, 프로필 상태, 최근 시험지 포함) |
 | POST | `/api/workspaces` | 워크스페이스 추가 `{ schoolId, grade }` |
 | GET | `/api/workspaces/{id}` | 워크스페이스 상세 |
-| DELETE | `/api/workspaces/{id}` 🔒 | 워크스페이스 삭제 |
+| DELETE | `/api/workspaces/{id}` 🔒 | 워크스페이스 삭제 (기출·시험범위·프로필이 있으면 409 `WORKSPACE_NOT_EMPTY`) |
+
+- 학교 목록이 비어 있으면 시작할 때 `seed/schools.json`(시연용 학교와 별칭)을 넣습니다.
+- 회원·학원(#6, #7) 전까지는 현재 학원을 1번으로 봅니다 (`CurrentAcademy`, TODO(#6)). 카드 요약(기출 수, 프로필 상태)은 #14에서 추가합니다.
 
 ### 기출과 출제 프로필
 
