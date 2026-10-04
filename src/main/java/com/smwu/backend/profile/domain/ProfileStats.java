@@ -16,6 +16,7 @@ import java.util.Map;
  * @param subjectivePointsRatio 배점 기준 서답형 비중 (0~1). 배점이 없는 문항이 있으면 null
  * @param typeCounts            유형별 문항 수 (시험지 전체 합)
  * @param frequentConditions    서답형 [조건]에서 2번 이상 나온 문구 (많은 순, 최대 10개)
+ * @param schoolDbExamCount     함께 반영한 학교 DB 회차 수 (다른 학원 기출, 내 기출과 같은 회차 제외). 없으면 null
  */
 public record ProfileStats(
         int examCount,
@@ -25,7 +26,8 @@ public record ProfileStats(
         double subjectiveRatio,
         Double subjectivePointsRatio,
         Map<QuestionType, Integer> typeCounts,
-        List<ConditionCount> frequentConditions
+        List<ConditionCount> frequentConditions,
+        Integer schoolDbExamCount
 ) {
 
     public record ConditionCount(String text, int count) {

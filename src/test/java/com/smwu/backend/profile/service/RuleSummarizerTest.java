@@ -31,6 +31,20 @@ class RuleSummarizerTest {
             List.of(), List.of());
 
     @Test
+    void 학교_DB_경향을_넣었을_때만_근거가_DB뿐인_규칙을_학교_DB_규칙으로_받는다() {
+        Draft draft = new Draft(List.of(
+                new RuleDraft("어구 배열이 최근 3회 연속 출제되었다.", RuleCategory.QUESTION_TYPE, List.of(" DB ")),
+                new RuleDraft("요약문 빈칸은 첫 철자를 준다.", RuleCategory.CONDITION, List.of("Q1", "DB"))), List.of());
+
+        List<ProfileRule> withDb = RuleSummarizer.toResult(draft, keyed(), "m", true).rules();
+        assertThat(withDb).extracting(ProfileRule::source).containsExactly(RuleSource.SCHOOL_DB, RuleSource.PAST_EXAM);
+        assertThat(withDb.get(0).evidenceQuestionIds()).isEmpty();
+
+        assertThat(RuleSummarizer.toResult(draft, keyed(), "m", false).rules())
+                .extracting(ProfileRule::source).containsExactly(RuleSource.PAST_EXAM);
+    }
+
+    @Test
     void 근거가_없거나_중복된_규칙은_버리고_ID로_바꾼다() {
         Draft draft = new Draft(List.of(
                 new RuleDraft("어구 배열은 분사구문 문장에서 나온다.", RuleCategory.QUESTION_TYPE, List.of("Q1", "Q1", " Q2 ")),

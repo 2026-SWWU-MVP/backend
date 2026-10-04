@@ -50,7 +50,8 @@ public final class ProfileStatsCalculator {
                 questions.isEmpty() ? 0 : round(subjective / (double) questions.size()),
                 subjectivePointsRatio(questions),
                 new LinkedHashMap<>(typeCounts),
-                frequentConditions(questions));
+                frequentConditions(questions),
+                null);
     }
 
     /**

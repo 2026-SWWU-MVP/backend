@@ -40,6 +40,8 @@ public class RuleSummarizer {
 
     public static final String TASK = "summarize-rules";
     static final int MAX_RULES = 10;
+    /** 학교 DB 경향에서만 확인되는 규칙의 근거 키 */
+    static final String SCHOOL_DB_KEY = "DB";
     static final int MAX_EXAMPLES = 3;
     static final int MIN_EXAMPLES = 2;
     private static final int PASSAGE_MAX_CHARS = 1500;
@@ -71,6 +73,14 @@ public class RuleSummarizer {
      */
     public Result summarize(String target, ProfileStats stats, List<PastExam> exams, List<PastQuestion> subjectiveQuestions,
                             Map<Long, List<PastPassage>> passagesByExam) {
+        return summarize(target, stats, exams, subjectiveQuestions, passagesByExam, null);
+    }
+
+    /**
+     * @param schoolDb 다른 학원 기출의 학교 DB 경향 설명 (#41). 있으면 그 경향에서만 확인되는 규칙을 근거 키 "DB"로 받는다
+     */
+    public Result summarize(String target, ProfileStats stats, List<PastExam> exams, List<PastQuestion> subjectiveQuestions,
+                            Map<Long, List<PastPassage>> passagesByExam, String schoolDb) {
         if (subjectiveQuestions.isEmpty()) {
             return new Result(List.of(), List.of(), null);
         }
@@ -85,25 +95,33 @@ public class RuleSummarizer {
                 promptLoader.render(TASK + "-user", Map.of(
                         "target", target,
                         "stats", describeStats(stats),
-                        "questions", describeQuestions(exams, keyed, passagesByExam))),
+                        "questions", describeQuestions(exams, keyed, passagesByExam),
+                        "schoolDb", schoolDb == null ? "(없음)" : schoolDb)),
                 promptLoader.schema(TASK));
         LlmResult<Draft> result = llmClient.generate(request, Draft.class);
-        return toResult(result.value(), keyed, result.model());
+        return toResult(result.value(), keyed, result.model(), schoolDb != null);
     }
 
     /** LLM 응답을 검증해서 규칙과 대표 문항으로 바꾼다 */
     static Result toResult(Draft draft, Map<String, PastQuestion> keyed, String model) {
+        return toResult(draft, keyed, model, false);
+    }
+
+    /** @param schoolDb 학교 DB 경향을 함께 넣었으면 true → 근거가 "DB"뿐인 규칙은 [학교 DB] 규칙으로 받는다 */
+    static Result toResult(Draft draft, Map<String, PastQuestion> keyed, String model, boolean schoolDb) {
         List<ProfileRule> rules = new ArrayList<>();
         Set<String> seenTexts = new HashSet<>();
         for (RuleDraft rule : draft.rules() == null ? List.<RuleDraft>of() : draft.rules()) {
             String text = replaceKeys(rule.text() == null ? "" : rule.text().strip(), keyed);
             List<Long> evidence = toIds(rule.evidenceKeys(), keyed);
-            if (text.isEmpty() || evidence.isEmpty() || !seenTexts.add(text)) {
+            boolean fromSchoolDb = schoolDb && evidence.isEmpty() && rule.evidenceKeys() != null
+                    && rule.evidenceKeys().stream().anyMatch(k -> SCHOOL_DB_KEY.equals(k == null ? null : k.strip()));
+            if (text.isEmpty() || (evidence.isEmpty() && !fromSchoolDb) || !seenTexts.add(text)) {
                 continue;
             }
             rules.add(new ProfileRule("r" + (rules.size() + 1), text,
                     rule.category() == null ? RuleCategory.OTHER : rule.category(),
-                    RuleSource.PAST_EXAM, evidence, false, null));
+                    fromSchoolDb ? RuleSource.SCHOOL_DB : RuleSource.PAST_EXAM, evidence, false, null));
             if (rules.size() == MAX_RULES) {
                 break;
             }

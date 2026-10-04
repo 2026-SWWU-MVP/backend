@@ -45,7 +45,7 @@ public class GenerationContextFactory {
                 .map(ProfileRule::text)
                 .toList();
         List<String> pastExamRules = profile.getRules().stream()
-                .filter(r -> r.source() == RuleSource.PAST_EXAM && !r.overridden())
+                .filter(r -> r.source().isAnalysis() && !r.overridden())
                 .map(ProfileRule::text)
                 .toList();
         Map<Long, PastQuestion> questions = pastQuestionRepository.findAllById(profile.getExampleQuestionIds()).stream()

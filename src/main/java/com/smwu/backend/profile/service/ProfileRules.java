@@ -41,7 +41,7 @@ public final class ProfileRules {
         return rules.stream().map(r -> {
             StringBuilder sb = new StringBuilder()
                     .append(r.id()).append(' ')
-                    .append(r.source() == RuleSource.TEACHER ? "[강사]" : "[기출]").append(' ')
+                    .append(r.source().label()).append(' ')
                     .append('[').append(r.category()).append("] ")
                     .append(r.text());
             if (r.overridden()) {

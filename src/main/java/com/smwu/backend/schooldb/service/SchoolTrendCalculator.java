@@ -102,7 +102,7 @@ public final class SchoolTrendCalculator {
                 highlights(sorted, byYear));
     }
 
-    static double weight(int yearsAgo) {
+    public static double weight(int yearsAgo) {
         return yearsAgo <= 0 ? 1.0 : yearsAgo == 1 ? 0.5 : 0.25;
     }
 
