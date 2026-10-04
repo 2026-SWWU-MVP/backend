@@ -215,7 +215,7 @@ X-User-Id: 3
 
 - 단위는 **학교 + 학년**입니다. 같은 학교라도 학년마다 교과서, 담당 선생님, 출제 스타일이 다릅니다.
 - 학교 이름은 **공용 목록**(`School`)을 씁니다. 학교 추가 시 이름으로 검색하고, 없으면 새로 등록합니다. 같은 학교가 "건대부고", "건국대부고"로 중복 등록되는 것을 줄이기 위해서입니다.
-- 워크스페이스와 그 안의 데이터는 학원별로 따로 있습니다. 두 학원이 모두 건대부고 1학년을 맡아도 기출과 프로필은 공유되지 않습니다.
+- 워크스페이스와 그 안의 데이터는 학원별로 따로 있습니다. 두 학원이 모두 건대부고 1학년을 맡아도 기출 원본과 프로필은 공유되지 않습니다. 대신 기출에서 계산한 **분석 결과(경향)만** 학교별 DB에 모입니다 (3.10).
 - 한 학원 안에서 같은 학교 + 학년 워크스페이스는 하나만 만들 수 있습니다 (unique 제약).
 - 강사별 담당 학교 지정은 제외합니다. 학원 안의 모든 강사가 모든 워크스페이스를 볼 수 있습니다.
 
@@ -232,6 +232,50 @@ MVP에서는 구현하지 않습니다. 백엔드 2명 중 한 명의 일정이 
 | 기능 | 강사가 배포한 시험지를 웹에서 풀기, 객관식·단답형 자동 채점, 결과 확인 |
 | 확장 | 오답 기반 재시험 생성, 서술형 AI 보조 채점 |
 | 데이터 준비 | `User.role`에 `STUDENT` 값만 미리 정의해 둠. 나머지 엔티티(`ClassCode`, `Attempt`)는 구현할 때 추가 |
+
+### 3.10 학교별 DB (경향 공유)
+
+학원이 기출을 올릴수록 **학교 + 학년 단위로 출제 경향이 누적**됩니다. 원본은 올린 학원만 보고, 다른 학원과는 **분석 결과만** 공유합니다.
+
+```
+A학원: 건대부고 1학년 2025 1학기 중간 기출 업로드 ─┐
+B학원: 건대부고 1학년 2024 2학기 기말 기출 업로드 ─┼─→ [학교별 DB] 건대부고 1학년
+C학원: 건대부고 1학년 2025 1학기 중간 (A와 같은 회차) ┘      회차 2개 · 기여 학원 3곳
+                                                          유형 비율, 서술형 비중, 지문 출처, 연도별 변화
+                                                                │
+                신규 D학원 (기출 0개) ─ 건대부고 1학년 워크스페이스 생성 ─┘ → 첫날부터 학교 경향으로 프로필 생성
+```
+
+**공유하는 것 / 하지 않는 것**
+
+| 공유 (학교별 DB) | 공유하지 않음 (학원 소유) |
+|---|---|
+| 회차 목록 (연도·학기·시험 종류), 문항 수, 배점 합계 | 기출 PDF, 추출한 지문·문항 원문, 정답 |
+| 유형별 문항 수와 비율, 서술형 비중, 지문당 유형 구성 | 강사 의견, 강사 규칙, 확정 프로필 |
+| 지문 출처 비율 (교과서 / 모의고사 / 외부 지문) | 생성한 문제, 시험지 |
+| 원문을 인용하지 않은 출제 경향 요약 (LLM) | 어느 학원이 올렸는지 (기여 학원 수만 표시) |
+
+**회차와 중복 처리**
+
+- 회차 = `(schoolId, grade, examYear, semester, examType)`. 학원이 기출을 올릴 때 워크스페이스의 학교·학년과 입력한 연도·학기·시험 종류로 정해집니다.
+- 같은 회차를 여러 학원이 올리면 **회차는 하나**로 셉니다 (통계가 부풀지 않게). 회차 통계는 그 회차의 기여 중 점검 이슈가 가장 적은 추출 결과로 정하고, 기여 학원 수만 늘립니다.
+- 기출 추출이 끝나면 자동으로 학교 DB에 기여합니다. 기출을 삭제하면 그 기여도 빠집니다.
+
+**경향 누적**
+
+- 회차별 통계는 코드로 계산합니다 (기존 `ProfileStatsCalculator` 재사용, LLM 비용 없음).
+- 학교 경향 = 최근 회차일수록 가중치를 높여 합산 (예: 최근 1년 ×1.0, 2년 전 ×0.5, 그 이전 ×0.25).
+- 연도·학기별 변화를 함께 보여줍니다: "서술형 비중 2024년 30% → 2025년 45%", "어구 배열 4회 연속 출제".
+- 회차가 적으면 신뢰도를 함께 표시합니다: "기출 2회분 기준".
+- 경향 요약 문장(LLM)은 회차가 추가될 때만 다시 만들고 캐시합니다. 원문 문장을 인용하지 않도록 프롬프트와 코드 검사로 막습니다.
+
+**출제 프로필과의 관계**
+
+- 프로필 v1 = **내 학원 기출**(원문 예시 문항 포함) + **학교 DB 경향**(통계, 규칙). 강사 의견은 지금처럼 가장 우선합니다.
+- 내 기출이 없으면 학교 DB 경향만으로 v1을 만듭니다 (예시 문항 없이). 화면에 "학교 DB 기출 N회분 기준"을 표시합니다.
+- 프로필 통계마다 출처(내 기출 / 학교 DB)를 구분해 보여줍니다.
+
+**발표 포인트:** 신규 학원도 기출 없이 첫날부터 학교 맞춤 문제를 만들 수 있고(학원 창업 지원), 학원이 많이 쓸수록 학교별 경향이 정교해지는 **데이터 네트워크 효과**. 원본은 공유하지 않아 저작권과 학원 자료를 보호합니다.
 
 ---
 
@@ -277,6 +321,7 @@ LLM은 발문과 조건을 쓰지 않고 **문제 내용(대상 문장, 빈칸 �
 Academy ─< User (OWNER / TEACHER)
    ├─< InviteCode
    └─< Workspace >─ School (공용 학교 목록)
+                      └─< SchoolExam (회차, 학교 DB) ─< ExamContribution >─ PastExam
           ├─< PastExam ─< PastQuestion
           ├─< SchoolProfile (버전별, DRAFT → CONFIRMED)
           ├─< Material ─< Passage ─< Problem
@@ -289,7 +334,10 @@ Academy ─< User (OWNER / TEACHER)
 | `Academy` | id, name, plan, logoPath, logoWidth, logoHeight, createdAt | 학원 (계약 단위) |
 | `User` | id, loginId(unique), passwordHash, name, role, academyId, createdAt | 계정. role = `OWNER` / `TEACHER` / `STUDENT`(추후). 소속 전에는 role, academyId가 null |
 | `InviteCode` | id, academyId, code(unique), createdBy, expiresAt, usedBy, usedAt, canceled | 강사 초대 코드 |
-| `School` | id, name, region | 공용 학교 목록 |
+| `School` | id, name, region, aliases(JSON) | 공용 학교 목록. 별칭으로 "건대부고" = "건국대부고" 검색 |
+| `SchoolExam` | id, schoolId, grade, examYear, semester, examType, stats(JSON), contributorCount, updatedAt | 학교 DB의 회차. 5개 키 unique. 원문 없이 통계만 |
+| `ExamContribution` | id, schoolExamId, pastExamId, academyId, stats(JSON), issueCount, createdAt | 학원 기출 1개의 기여. 회차 통계를 고르는 근거 |
+| `SchoolTrendSummary` | id, schoolId, grade, basedOnExamIds(JSON), summary(JSON), llmModel, createdAt | LLM 경향 요약 캐시. 회차 구성이 바뀌면 다시 생성 |
 | `Workspace` | id, academyId, schoolId, grade, createdBy, createdAt | 학교 + 학년. `(academyId, schoolId, grade)` unique |
 | `PastExam` | id, workspaceId, examYear, semester, examType, filePath, pageCount, textLayer, status(UPLOADED/EXTRACTING/EXTRACTED/FAILED), failureReason, warnings(JSON), llmModel, 토큰 수, rawResponse, createdBy | 업로드한 기출 PDF와 추출 상태 |
 | `PastPassage` | id, pastExamId, code(P1...), orderNo, title, text, edited | 기출에서 추출한 지문 |
