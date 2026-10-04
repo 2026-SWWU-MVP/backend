@@ -156,7 +156,7 @@ public class ProfileRevisionService {
                 throw new BusinessException(ErrorCode.INVALID_REQUEST, "같은 규칙이 두 번 들어 있습니다: " + edit.id());
             }
             // 비활성화는 [기출] 규칙에만 의미가 있다 (강사 규칙은 지우면 된다)
-            boolean overridden = existing.source() == RuleSource.PAST_EXAM && edit.overridden() != null
+            boolean overridden = existing.source().isAnalysis() && edit.overridden() != null
                     ? edit.overridden() : existing.overridden();
             result.add(new ProfileRule(existing.id(), text, edit.category() == null ? existing.category() : edit.category(),
                     existing.source(), existing.evidenceQuestionIds(), overridden, existing.noteIndex()));

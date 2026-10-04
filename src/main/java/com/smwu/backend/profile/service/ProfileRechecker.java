@@ -98,7 +98,7 @@ public class ProfileRechecker {
             allForIds.add(checked);
         }
         profile.getRules().stream()
-                .filter(r -> r.source() == RuleSource.TEACHER)
+                .filter(r -> r.source() != RuleSource.PAST_EXAM)
                 .forEach(rules::add);
 
         List<Long> examples = new ArrayList<>(RuleSummarizer.toIds(draft.exampleKeys(), keyed));

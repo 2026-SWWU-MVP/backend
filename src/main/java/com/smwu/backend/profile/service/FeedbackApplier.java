@@ -82,7 +82,7 @@ public class FeedbackApplier {
         // 비활성화는 아직 적용 중인 기출 규칙만
         Set<String> overridable = new HashSet<>();
         profile.getRules().stream()
-                .filter(r -> r.source() == RuleSource.PAST_EXAM && !r.overridden())
+                .filter(r -> r.source().isAnalysis() && !r.overridden())
                 .map(ProfileRule::id)
                 .forEach(overridable::add);
         Set<String> overrideIds = new LinkedHashSet<>();

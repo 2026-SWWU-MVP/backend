@@ -89,6 +89,6 @@ public final class ProfileDiff {
     }
 
     private static String sourceLabel(ProfileRule rule) {
-        return rule.source() == RuleSource.TEACHER ? "[강사]" : "[기출]";
+        return rule.source().label();
     }
 }
