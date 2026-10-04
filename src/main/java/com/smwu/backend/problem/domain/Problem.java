@@ -60,6 +60,9 @@ public class Problem extends BaseTimeEntity {
     /** 생성 작업 (#17). 단건 생성이면 null */
     private Long generationJobId;
 
+    /** 생성 작업 안에서의 위치 (지문 순서 → 유형 순서). 병렬 생성이라 ID 순서와 다를 수 있어 정렬에 쓴다 */
+    private Integer jobSlot;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private QuestionType type;
@@ -141,6 +144,11 @@ public class Problem extends BaseTimeEntity {
         this.edited = false;
         this.reviewedBy = null;
         applyGenerated(assembled, validationStatus, report, llmModel);
+    }
+
+    /** 생성 작업의 몇 번째 문항인지 기록 */
+    public void assignJobSlot(int slot) {
+        this.jobSlot = slot;
     }
 
     public PassageSource passageSource() {

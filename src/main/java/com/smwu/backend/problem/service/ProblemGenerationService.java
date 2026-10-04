@@ -31,16 +31,17 @@ public class ProblemGenerationService {
     private final PlatformTransactionManager transactionManager;
 
     public Problem generate(Long profileId, PassageSource passage, QuestionType type, ProblemOptions options, long seed) {
-        return generate(contextFactory.fromConfirmedProfile(profileId), passage, type, options, null, seed);
+        return generate(contextFactory.fromConfirmedProfile(profileId), passage, type, options, null, null, seed);
     }
 
     /**
      * @param profileContext  확정 프로필과 생성 맥락 (작업 하나에서 여러 문항을 만들 때 한 번만 만든다)
      * @param generationJobId 생성 작업 ID (#17), 단건이면 null
+     * @param jobSlot         생성 작업 안에서의 위치 (단건이면 null)
      * @param seed            [보기] 섞기 시드 (문항 위치 등으로 정하면 다시 생성해도 같은 순서)
      */
     public Problem generate(ProfileContext profileContext, PassageSource passage, QuestionType type, ProblemOptions options,
-                            Long generationJobId, long seed) {
+                            Long generationJobId, Integer jobSlot, long seed) {
         if (!generator.supports(type)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "아직 생성할 수 없는 유형입니다: " + type.getLabel());
         }
@@ -49,6 +50,9 @@ public class ProblemGenerationService {
 
         Problem problem = Problem.generated(profileContext.profile().getWorkspaceId(), profileContext.profile().getId(),
                 passage, generationJobId, type, resolved, outcome.problem(), outcome.status(), report(outcome), outcome.model());
+        if (jobSlot != null) {
+            problem.assignJobSlot(jobSlot);
+        }
         return problemRepository.save(problem);
     }
 
