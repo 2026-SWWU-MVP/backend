@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["headline", "points", "prepTips"],
+  "properties": {
+    "headline": { "type": "string" },
+    "points": { "type": "array", "items": { "type": "string" } },
+    "prepTips": { "type": "array", "items": { "type": "string" } }
+  }
+}

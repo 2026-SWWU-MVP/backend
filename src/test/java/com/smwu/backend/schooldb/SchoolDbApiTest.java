@@ -131,6 +131,34 @@ class SchoolDbApiTest {
     }
 
     @Test
+    void 경향_요약은_회차_구성이_바뀔_때만_새로_만든다() throws Exception {
+        long schoolId = school("경향요약고등학교");
+        long workspace = id(mockMvc.perform(post("/api/workspaces").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\": %d, \"grade\": 1}".formatted(schoolId)))
+                .andReturn().getResponse().getContentAsString());
+
+        mockMvc.perform(get("/api/workspaces/{id}/school-trends/summary", workspace))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.headline").doesNotExist())
+                .andExpect(jsonPath("$.basis").value("아직 학교 DB에 기출이 없습니다."));
+
+        extractedExam(workspace, 2025, 1, "MIDTERM");
+        mockMvc.perform(get("/api/schools/{id}/trends/summary", schoolId).param("grade", "1"))
+                .andExpect(jsonPath("$.cached").value(false))
+                .andExpect(jsonPath("$.examCount").value(1))
+                .andExpect(jsonPath("$.headline").isNotEmpty())
+                .andExpect(jsonPath("$.points", hasSize(3)))
+                .andExpect(jsonPath("$.llmModel").value("mock"));
+        mockMvc.perform(get("/api/workspaces/{id}/school-trends/summary", workspace))
+                .andExpect(jsonPath("$.cached").value(true));
+
+        extractedExam(workspace, 2024, 2, "FINAL");
+        mockMvc.perform(get("/api/schools/{id}/trends/summary", schoolId).param("grade", "1"))
+                .andExpect(jsonPath("$.cached").value(false))
+                .andExpect(jsonPath("$.examCount").value(2));
+    }
+
+    @Test
     void 워크스페이스가_없는_기출은_기여하지_않는다() throws Exception {
         long schoolId = school("기여없음고등학교");
         extractedExam(987654L, 2025, 1, "MIDTERM");
