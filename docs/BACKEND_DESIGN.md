@@ -297,7 +297,7 @@ Academy ─< User (OWNER / TEACHER)
 | `SchoolProfile` | 아래 참고 | 출제 프로필. 강사가 확정해야 문제 생성에 사용 가능 |
 | `Material` | id, workspaceId, title, filePath, createdBy | 교과서 2과, 모의고사 등 시험범위 자료 |
 | `Passage` | id, materialId, orderNo, title, content | 지문 단위. 문제는 지문에 딸림 |
-| `GenerationJob` | id, workspaceId, profileId, request(JSONB), status, total, done, failed, createdBy | 생성 작업 |
+| `GenerationJob` | id, workspaceId, profileId, plan(JSON), status(RUNNING/COMPLETED/FAILED), total, completed, errors, failureReason, finishedAt | 생성 작업. 문항은 `Problem.generationJobId` + `jobSlot`(지문 순서 → 유형 순서)으로 연결 |
 | `Problem` | 아래 참고 | 생성된 문항 |
 | `Worksheet` | id, workspaceId, title, headerText, showLogo, createdBy, createdAt | 시험지 설정 (1단 고정) |
 | `WorksheetItem` | worksheetId, problemId, orderNo | 시험지 내 문항 순서 |
@@ -448,6 +448,10 @@ v1에서는 검증 상태와 검수 상태가 한 필드에 섞여 있었는데,
 ```
 
 - `DRAFT` 프로필로는 생성할 수 없습니다. API에서 409를 반환합니다.
+- 한 작업은 최대 60문항, 지문 20개, 지문당 유형 4종 × 유형당 5문항까지입니다. `perPassage`를 비우면 프로필의 `typeMixPerPassage`를 씁니다.
+- 문항 하나가 예외로 끝나도 작업은 계속됩니다(`errors` 증가). 모든 문항이 예외면 작업은 `FAILED`, 그 외에는 `COMPLETED`입니다. 규칙 검증 FAILED 문항도 저장되어 강사가 재생성할 수 있습니다.
+- 진행률은 문항이 끝날 때마다 DB에서 원자적으로 증가시킵니다(`completed`, `errors`). 서버 재시작 시 `RUNNING` 작업은 `FAILED`로 바꿉니다.
+- 조회 응답의 `passed` / `needsReview` / `failed`는 저장된 문항의 검증 상태로 계산합니다(`failed` = 검증 실패 + 예외).
 - 구현 (#15): `ProblemGenerator`가 LLM 초안 → `ProblemTypeHandler.assemble`(발문·[조건]·빈칸·[보기] 섞기) → 공통 + 유형별 규칙 검증 → 실패 이유를 프롬프트에 넣어 재생성 (최대 3번 시도). 규칙 검증에 끝내 실패한 문항도 `FAILED`로 저장한다.
 - 요약문 빈칸 검증: 빈칸 수, 한 단어, 3글자 이상 내용어, 중복 없음, "형태 변경 없이"면 윗글에 같은 형태로 존재, 요약문이 윗글 문장을 그대로 베끼지 않음, 근거 문장이 윗글에 존재.
 - 어구 배열 검증: 대상 문장이 윗글에 그대로 존재, 어구를 이으면 대상 문장, 최소 단어 수, 어구 5~10개·각 6단어 이하·중복 없음, 쉼표·마침표 외 문장부호(따옴표·콜론 등) 없음, 섞인 순서 ≠ 정답 순서.
@@ -626,6 +630,7 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 | PATCH | `/api/passages/{id}` | 지문 수정 (제목, 출처, 본문, 순서) |
 | DELETE | `/api/passages/{id}` | 지문 삭제 |
 | POST | `/api/workspaces/{id}/generation-jobs` | 생성 작업 시작 → 202 (확정 프로필만 허용) |
+| GET | `/api/workspaces/{id}/generation-jobs` | 생성 작업 목록 (최신순) |
 | GET | `/api/generation-jobs/{id}` | 진행률 조회 (프론트에서 2초 간격 폴링) |
 | GET | `/api/generation-jobs/{id}/problems` | 생성 문항 목록 |
 | PATCH | `/api/problems/{id}` | 수정 / 채택 / 폐기 |
