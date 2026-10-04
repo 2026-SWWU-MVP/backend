@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -66,15 +67,23 @@ public class ProblemGenerator {
 
     public Outcome generate(GenerationContext context, PassageSource passage, QuestionType type, ProblemOptions options,
                             long seed) {
+        return generate(context, passage, type, options, seed, List.of());
+    }
+
+    /**
+     * @param existing 같은 지문·같은 유형으로 이미 만든 문항. 정답이 겹치지 않게 프롬프트로 알려주고, 겹치면 규칙 검증 실패로 다시 만든다
+     */
+    public Outcome generate(GenerationContext context, PassageSource passage, QuestionType type, ProblemOptions options,
+                            long seed, List<AssembledProblem> existing) {
         ProblemTypeHandler<?> handler = handlers.get(type);
         if (handler == null) {
             throw new IllegalArgumentException("아직 생성할 수 없는 유형입니다: " + type);
         }
-        return run(handler, context, passage, options.withDefaults(), seed);
+        return run(handler, context, passage, options.withDefaults(), seed, existing);
     }
 
     private <D> Outcome run(ProblemTypeHandler<D> handler, GenerationContext context, PassageSource passage,
-                            ProblemOptions options, long seed) {
+                            ProblemOptions options, long seed, List<AssembledProblem> existing) {
         List<String> failures = new ArrayList<>();
         AssembledProblem last = null;
         List<ValidationCheck> lastChecks = List.of();
@@ -85,7 +94,7 @@ public class ProblemGenerator {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             LlmResult<D> result;
             try {
-                result = llmClient.generate(request(handler, context, passage, options, failures), handler.draftType());
+                result = llmClient.generate(request(handler, context, passage, options, failures, existing), handler.draftType());
             } catch (LlmException e) {
                 failures.add("AI 호출 실패: " + e.getDetail());
                 log.warn("문제 생성 {} attempt={} AI 호출 실패: {}", handler.type(), attempt, e.getDetail());
@@ -103,6 +112,7 @@ public class ProblemGenerator {
             }
             List<ValidationCheck> checks = new ArrayList<>(commonChecks(assembled, passage));
             checks.addAll(handler.validate(assembled, passage, options));
+            checks.add(distinctCheck(assembled, existing));
             last = assembled;
             lastChecks = checks;
 
@@ -142,8 +152,23 @@ public class ProblemGenerator {
                         "근거 문장(evidence)이 윗글에 그대로 있지 않다. 윗글 문장을 글자 그대로 복사해야 한다."));
     }
 
+    /** 같은 지문·같은 유형으로 이미 만든 문항과 정답이 같으면 실패 (한 지문에 어구 배열 2문항이 같은 문장으로 나오는 문제) */
+    static ValidationCheck distinctCheck(AssembledProblem problem, List<AssembledProblem> existing) {
+        String answer = answerKey(problem);
+        boolean duplicated = answer != null && existing.stream().map(ProblemGenerator::answerKey).anyMatch(answer::equals);
+        return ValidationCheck.of("DISTINCT_FROM_EXISTING", !duplicated,
+                "같은 지문으로 이미 만든 문항과 정답이 같다. 이미 만든 문항에 쓰지 않은 다른 문장(또는 다른 단어)을 골라야 한다.");
+    }
+
+    private static String answerKey(AssembledProblem problem) {
+        return problem == null || problem.answerText() == null ? null
+                : problem.answerText().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").strip();
+    }
+
     private <D> LlmRequest request(ProblemTypeHandler<D> handler, GenerationContext context, PassageSource passage,
-                                   ProblemOptions options, List<String> failures) {
+                                   ProblemOptions options, List<String> failures, List<AssembledProblem> existing) {
+        String avoid = existing.isEmpty() ? "" : "\n## 이 지문으로 이미 만든 같은 유형 문항의 정답 (겹치지 않게 다른 문장·단어를 고를 것)\n"
+                + existing.stream().map(e -> "- " + e.answerText()).collect(Collectors.joining("\n"));
         String retry = failures.isEmpty() ? "" : "\n## 이전 시도에서 지켜지지 않은 점 (반드시 고칠 것)\n"
                 + failures.stream().map(f -> "- " + f).collect(Collectors.joining("\n"));
         return LlmRequest.of(
@@ -157,7 +182,7 @@ public class ProblemGenerator {
                         "typeLabel", handler.type().getLabel(),
                         "typeInstructions", promptLoader.text(handler.promptName()).strip(),
                         "requirements", handler.requirements(options),
-                        "retryFeedback", retry)),
+                        "retryFeedback", avoid + retry)),
                 promptLoader.schema(handler.promptName()));
     }
 

@@ -73,6 +73,27 @@ class ProblemGeneratorTest {
             List.of(new GenerationContext.Example("어구 배열", "발문: 윗글에 나온 문장이 되도록 배열하시오.\n[보기] a / b / c")));
 
     @Test
+    void 같은_지문으로_이미_만든_문항과_정답이_같으면_다시_생성한다() {
+        responses.add(VALID_ORDER);
+        ProblemGenerator.Outcome first = generator.generate(context, PASSAGE, QuestionType.SENTENCE_ORDER, ProblemOptions.defaults(), 1L);
+        requests.clear();
+
+        responses.add(VALID_ORDER);
+        responses.add(new SentenceOrderHandler.Draft(
+                "As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away.",
+                List.of("As cities age", "neighborhoods", "can become", "old and lifeless", "which may cause", "citizens", "to move away"),
+                "관계대명사 which의 계속적 용법"));
+        ProblemGenerator.Outcome second = generator.generate(context, PASSAGE, QuestionType.SENTENCE_ORDER, ProblemOptions.defaults(), 2L,
+                List.of(first.problem()));
+
+        assertThat(second.status()).isEqualTo(ValidationStatus.PASSED);
+        assertThat(second.attempts()).isEqualTo(2);
+        assertThat(second.attemptFailures()).singleElement().asString().contains("이미 만든 문항과 정답이 같다");
+        assertThat(second.problem().answer().sentence()).startsWith("As cities age");
+        assertThat(requests.get(0).userPrompt()).contains("이 지문으로 이미 만든 같은 유형 문항의 정답", "- " + SENTENCE);
+    }
+
+    @Test
     void 규칙_검증에_실패하면_이유를_알려주고_다시_생성한다() {
         responses.add(NOT_IN_PASSAGE);
         responses.add(VALID_ORDER);

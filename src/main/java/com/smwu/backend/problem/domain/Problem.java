@@ -151,6 +151,12 @@ public class Problem extends BaseTimeEntity {
         this.jobSlot = slot;
     }
 
+    /** 같은 지문·유형의 다음 문항을 만들 때 겹치지 않게 넘기는 용도 */
+    public AssembledProblem toAssembled() {
+        return new AssembledProblem(type, stem, List.copyOf(conditions), body, List.copyOf(choices), answer, answerText,
+                explanation, evidence);
+    }
+
     public PassageSource passageSource() {
         return new PassageSource(passageId, passageTitle, passageText);
     }
