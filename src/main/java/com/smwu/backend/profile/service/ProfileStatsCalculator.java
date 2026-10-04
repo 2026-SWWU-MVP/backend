@@ -58,11 +58,25 @@ public final class ProfileStatsCalculator {
      * 해당 유형이 기출에 하나도 없으면 출력예시 기준 기본값(요약문 빈칸 2 + 어구 배열 1)을 쓴다.
      */
     public static Map<QuestionType, Integer> typeMixPerPassage(List<PastQuestion> questions) {
-        Map<QuestionType, Integer> counts = new EnumMap<>(QuestionType.class);
+        Map<QuestionType, Double> counts = new EnumMap<>(QuestionType.class);
         questions.stream()
-                .filter(q -> q.getSection() == QuestionSection.SUBJECTIVE && GENERATABLE_TYPES.contains(q.getType()))
-                .forEach(q -> counts.merge(q.getType(), 1, Integer::sum));
-        int total = counts.values().stream().mapToInt(Integer::intValue).sum();
+                .filter(q -> q.getSection() == QuestionSection.SUBJECTIVE)
+                .forEach(q -> counts.merge(q.getType(), 1.0, Double::sum));
+        return apportionMix(counts);
+    }
+
+    /**
+     * 유형별 (가중) 출제 수를 지문당 3문항으로 나눈다. 생성할 수 없는 유형은 빼고 계산한다.
+     * 학교 DB 경향(#39)처럼 회차마다 가중치를 준 값도 그대로 넣을 수 있다.
+     */
+    public static Map<QuestionType, Integer> apportionMix(Map<QuestionType, Double> weightedCounts) {
+        Map<QuestionType, Double> counts = new EnumMap<>(QuestionType.class);
+        weightedCounts.forEach((type, count) -> {
+            if (GENERATABLE_TYPES.contains(type) && count > 0) {
+                counts.put(type, count);
+            }
+        });
+        double total = counts.values().stream().mapToDouble(Double::doubleValue).sum();
         if (total == 0) {
             return orderedMix(new EnumMap<>(DEFAULT_TYPE_MIX));
         }
@@ -70,8 +84,8 @@ public final class ProfileStatsCalculator {
         Map<QuestionType, Integer> mix = new EnumMap<>(QuestionType.class);
         Map<QuestionType, Double> remainders = new EnumMap<>(QuestionType.class);
         int assigned = 0;
-        for (Map.Entry<QuestionType, Integer> e : counts.entrySet()) {
-            double quota = QUESTIONS_PER_PASSAGE * e.getValue() / (double) total;
+        for (Map.Entry<QuestionType, Double> e : counts.entrySet()) {
+            double quota = QUESTIONS_PER_PASSAGE * e.getValue() / total;
             int floor = (int) Math.floor(quota);
             mix.put(e.getKey(), floor);
             remainders.put(e.getKey(), quota - floor);
@@ -80,7 +94,7 @@ public final class ProfileStatsCalculator {
         // 남은 자리는 나머지가 큰 순 → 기출 개수가 많은 순 → 유형 순서로 배정
         List<QuestionType> order = new ArrayList<>(counts.keySet());
         order.sort(Comparator.<QuestionType>comparingDouble(remainders::get).reversed()
-                .thenComparing(Comparator.<QuestionType>comparingInt(counts::get).reversed())
+                .thenComparing(Comparator.<QuestionType>comparingDouble(counts::get).reversed())
                 .thenComparing(Comparator.naturalOrder()));
         for (int i = 0; assigned < QUESTIONS_PER_PASSAGE; i++, assigned++) {
             mix.merge(order.get(i % order.size()), 1, Integer::sum);

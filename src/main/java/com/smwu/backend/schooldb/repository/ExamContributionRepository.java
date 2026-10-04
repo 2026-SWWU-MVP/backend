@@ -3,6 +3,7 @@ package com.smwu.backend.schooldb.repository;
 import com.smwu.backend.schooldb.domain.ExamContribution;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,4 +12,6 @@ public interface ExamContributionRepository extends JpaRepository<ExamContributi
     Optional<ExamContribution> findByPastExamId(Long pastExamId);
 
     List<ExamContribution> findBySchoolExamId(Long schoolExamId);
+
+    List<ExamContribution> findBySchoolExamIdIn(Collection<Long> schoolExamIds);
 }

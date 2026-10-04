@@ -1,6 +1,7 @@
 package com.smwu.backend.common.exception;
 
 import com.smwu.backend.common.response.ErrorResponse;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -42,7 +44,10 @@ public class GlobalExceptionHandler {
             MissingServletRequestParameterException.class,
             MissingRequestHeaderException.class,
             MissingServletRequestPartException.class,
-            MethodArgumentTypeMismatchException.class
+            MethodArgumentTypeMismatchException.class,
+            // @RequestParam @Min/@Max 같은 파라미터 검증 실패
+            HandlerMethodValidationException.class,
+            ConstraintViolationException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception e) {
         return badRequest(ErrorCode.INVALID_REQUEST.getMessage());
