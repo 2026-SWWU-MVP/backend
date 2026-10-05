@@ -40,7 +40,7 @@ class SchoolDbApiTest {
                         .content("{\"schoolId\": %d, \"grade\": 1}".formatted(schoolId)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         // 다른 학원의 같은 학교·학년 워크스페이스 (회원 기능 전이라 저장소로 직접 만든다)
-        long other = workspaceRepository.save(new Workspace(2L, schoolId, 1, null)).getId();
+        long other = workspaceRepository.save(new Workspace(9002L, schoolId, 1, null)).getId();
 
         long myExam = extractedExam(mine, 2025, 1, "MIDTERM");
         String rounds = mockMvc.perform(get("/api/schools/{id}/exams", schoolId).param("grade", "1"))
@@ -114,7 +114,7 @@ class SchoolDbApiTest {
                 .andExpect(jsonPath("$.basis").value("아직 학교 DB에 기출이 없습니다."));
 
         extractedExam(workspace, 2025, 1, "MIDTERM");
-        workspaceRepository.save(new Workspace(3L, schoolId, 2, null));
+        workspaceRepository.save(new Workspace(9003L, schoolId, 2, null));
         String trend = mockMvc.perform(get("/api/schools/{id}/trends", schoolId).param("grade", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.schoolName").value("경향조회고등학교"))

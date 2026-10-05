@@ -66,11 +66,11 @@ public class WorkspaceService {
     }
 
     /**
-     * 비어 있는 워크스페이스만 지운다 (잘못 만든 경우). 기출·시험범위·프로필이 있으면 409.
-     * TODO(#7): 원장만 (403 OWNER_ONLY)
+     * 비어 있는 워크스페이스만 지운다 (잘못 만든 경우). 기출·시험범위·프로필이 있으면 409. 원장만 (403 OWNER_ONLY)
      */
     @Transactional
     public void delete(Long workspaceId) {
+        currentAcademy.requireOwner();
         Workspace workspace = getWorkspace(workspaceId);
         if (pastExamRepository.existsByWorkspaceId(workspaceId) || materialRepository.existsByWorkspaceId(workspaceId)
                 || profileRepository.existsByWorkspaceId(workspaceId)) {

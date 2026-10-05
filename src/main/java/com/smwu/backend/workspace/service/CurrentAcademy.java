@@ -25,4 +25,12 @@ public class CurrentAcademy {
     public User user() {
         return CurrentUserContext.get();
     }
+
+    /** 원장 전용 기능 (설계서 3.4). 소속 전이면 403 NO_ACADEMY, 강사면 403 OWNER_ONLY */
+    public void requireOwner() {
+        academyId();
+        if (!CurrentUserContext.get().isOwner()) {
+            throw new BusinessException(ErrorCode.OWNER_ONLY);
+        }
+    }
 }
