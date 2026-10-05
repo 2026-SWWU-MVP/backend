@@ -47,7 +47,7 @@ class SchoolDbProfileApiTest {
     @Test
     void 기출이_없는_신규_학원도_학교_DB로_프로필을_만들고_문제를_생성한다() throws Exception {
         long schoolId = school("신규학원지원고등학교");
-        long other = workspaceRepository.save(new Workspace(2L, schoolId, 1, null)).getId();
+        long other = workspaceRepository.save(new Workspace(9002L, schoolId, 1, null)).getId();
         extractedExam(other, 2025, 1, "MIDTERM");
         long mine = workspace(schoolId, 1);
 
@@ -87,7 +87,7 @@ class SchoolDbProfileApiTest {
     @Test
     void 내_기출과_같은_회차는_한_번만_세고_다른_회차만_더한다() throws Exception {
         long schoolId = school("회차합치기고등학교");
-        long other = workspaceRepository.save(new Workspace(2L, schoolId, 2, null)).getId();
+        long other = workspaceRepository.save(new Workspace(9002L, schoolId, 2, null)).getId();
         extractedExam(other, 2025, 1, "MIDTERM");
         extractedExam(other, 2024, 2, "FINAL");
         long mine = workspace(schoolId, 2);
