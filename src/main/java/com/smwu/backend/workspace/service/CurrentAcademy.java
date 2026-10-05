@@ -1,23 +1,28 @@
 package com.smwu.backend.workspace.service;
 
+import com.smwu.backend.auth.web.CurrentUserContext;
+import com.smwu.backend.common.exception.BusinessException;
+import com.smwu.backend.common.exception.ErrorCode;
+import com.smwu.backend.user.domain.User;
 import org.springframework.stereotype.Component;
 
-/**
- * 현재 사용자의 학원.
- * TODO(#6): X-User-Id로 사용자를 찾아 user.academyId를 돌려준다 (학원 소속 전이면 403 NO_ACADEMY).
- * 회원·학원 기능 전까지는 모든 요청을 학원 1번으로 본다.
- */
+/** 현재 사용자(X-User-Id)의 학원. 학원 소속 전이면 403 NO_ACADEMY */
 @Component
 public class CurrentAcademy {
 
-    static final long DEFAULT_ACADEMY_ID = 1L;
-
     public Long academyId() {
-        return DEFAULT_ACADEMY_ID;
+        Long academyId = CurrentUserContext.get().getAcademyId();
+        if (academyId == null) {
+            throw new BusinessException(ErrorCode.NO_ACADEMY);
+        }
+        return academyId;
     }
 
-    /** TODO(#6): 현재 사용자 ID */
     public Long userId() {
-        return null;
+        return CurrentUserContext.get().getId();
+    }
+
+    public User user() {
+        return CurrentUserContext.get();
     }
 }

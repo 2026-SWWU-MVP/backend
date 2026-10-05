@@ -182,6 +182,8 @@ X-User-Id: 3
 - 아이디는 **중복 불가**(DB unique 제약 + 가입 전 중복 확인 API), 영문 소문자와 숫자 4~20자입니다.
 - 비밀번호는 BCrypt로 해시해서 저장합니다. 백엔드 안에서만 처리되므로 프론트는 평문을 그대로 보내면 됩니다. 비밀번호 규칙은 4자 이상 하나만 둡니다.
 - **한계:** 헤더 값은 누구나 바꿀 수 있어서 실제 서비스에는 쓸 수 없습니다. MVP 시연용이며, 발표에서는 "추후 JWT 기반 인증으로 전환"이라고 명시합니다.
+- 구현 (#6): `CurrentUserInterceptor`(헤더 없음·숫자 아님·없는 사용자 → 401 `UNAUTHENTICATED`), `@CurrentUser User`, 서비스 계층은 `CurrentUserContext` / `CurrentAcademy`(학원 소속 전이면 403 `NO_ACADEMY`). 로그인 실패는 아이디·비밀번호 구분 없이 401 `LOGIN_FAILED`.
+- 테스트: `TestUserMockMvcCustomizer`(테스트 소스)가 X-User-Id 없는 MockMvc 요청에 학원 1번 테스트 원장을 넣습니다. 헤더 없는 요청을 시험할 때는 `X-Test-Anonymous` 헤더를 붙입니다.
 
 ### 3.7 학원 간 데이터 격리
 
