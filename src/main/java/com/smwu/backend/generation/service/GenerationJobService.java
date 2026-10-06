@@ -19,7 +19,7 @@ import com.smwu.backend.problem.service.GenerationContextFactory;
 import com.smwu.backend.problem.service.GenerationContextFactory.ProfileContext;
 import com.smwu.backend.problem.service.ProblemGenerator;
 import com.smwu.backend.problem.type.PassageSource;
-import com.smwu.backend.profile.service.ProfileQueryService;
+import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,11 +49,11 @@ public class GenerationJobService {
     private final GenerationContextFactory contextFactory;
     private final ProblemGenerator generator;
     private final PassageService passageService;
-    private final ProfileQueryService profileQueryService;
+    private final WorkspaceAccessChecker accessChecker;
     private final GenerationSlotRunner slotRunner;
 
     public GenerationJobResponse create(Long workspaceId, CreateGenerationJobRequest request) {
-        profileQueryService.checkWorkspaceAccess(workspaceId);
+        accessChecker.check(workspaceId);
         ProfileContext profileContext = contextFactory.fromConfirmedProfile(request.profileId());
         if (!profileContext.profile().getWorkspaceId().equals(workspaceId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "이 워크스페이스의 프로필이 아닙니다.");
@@ -93,7 +93,7 @@ public class GenerationJobService {
     }
 
     public List<GenerationJobResponse> list(Long workspaceId) {
-        profileQueryService.checkWorkspaceAccess(workspaceId);
+        accessChecker.check(workspaceId);
         return jobRepository.findByWorkspaceIdOrderByIdDesc(workspaceId).stream().map(this::toResponse).toList();
     }
 
@@ -105,7 +105,7 @@ public class GenerationJobService {
 
     private GenerationJob getJob(Long jobId) {
         GenerationJob job = jobRepository.findById(jobId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        profileQueryService.checkWorkspaceAccess(job.getWorkspaceId());
+        accessChecker.check(job.getWorkspaceId());
         return job;
     }
 

@@ -12,6 +12,7 @@ import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.problem.type.ProblemOptions;
 import com.smwu.backend.profile.domain.SchoolProfile;
 import com.smwu.backend.profile.service.ProfileQueryService;
+import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -31,6 +32,7 @@ public class ProblemGenerationService {
     private final ProblemGenerator generator;
     private final ProblemRepository problemRepository;
     private final ProfileQueryService profileQueryService;
+    private final WorkspaceAccessChecker accessChecker;
     private final PlatformTransactionManager transactionManager;
 
     public Problem generate(Long profileId, PassageSource passage, QuestionType type, ProblemOptions options, long seed) {
@@ -95,7 +97,7 @@ public class ProblemGenerationService {
 
     public Problem getProblem(Long problemId) {
         Problem problem = problemRepository.findById(problemId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        profileQueryService.checkWorkspaceAccess(problem.getWorkspaceId());
+        accessChecker.check(problem.getWorkspaceId());
         return problem;
     }
 

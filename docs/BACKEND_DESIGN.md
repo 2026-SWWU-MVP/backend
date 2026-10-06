@@ -194,6 +194,12 @@ X-User-Id: 3
 - 워크스페이스 하위 데이터(기출, 프로필, 지문, 문제, 시험지)를 조회할 때 `workspace.academyId == user.academyId`를 확인하고, 다르면 **404**를 반환합니다. (403이 아니라 404인 이유: 다른 학원 데이터가 존재한다는 사실 자체를 알려주지 않기 위해)
 - 이 확인은 `WorkspaceAccessChecker` 한 곳에서 처리하고, 서비스 계층에서 호출합니다.
 - "A학원 강사가 B학원 워크스페이스 ID로 요청하면 404"를 **통합 테스트로 작성**합니다. 발표에서 멀티테넌시 데이터 격리를 보여주는 근거가 됩니다.
+- 구현 (#10):
+  - `WorkspaceAccessChecker.check(workspaceId)`: 하위 리소스 서비스가 부른다. 리소스를 ID로 찾은 뒤 **그 리소스의 `workspaceId`**로 확인한다 (예: `PastExamService.getExam`, `MaterialService.getMaterial`, `PassageService.getPassage`, `ProfileQueryService.getProfile`, `GenerationJobService.getJob`, `ProblemGenerationService.getProblem`). 다른 서비스는 이 `getXxx`를 거쳐서만 리소스를 가져온다.
+  - `WorkspaceAccessChecker.get(workspaceId)`: 워크스페이스 자체가 필요할 때 (`WorkspaceService.getWorkspace`, 학교 DB 경향).
+  - 로그인 사용자가 없는 내부 호출(요청이 시작한 비동기 추출·생성 작업)은 `check`를 건너뛴다. `/api/**` 요청은 인터셉터가 사용자를 보장하므로 외부 요청은 빠져나갈 수 없다.
+  - 새 하위 리소스(시험지 등)를 추가할 때: 엔티티에 `workspaceId`를 두고, 서비스의 `getXxx(id)`에서 `accessChecker.check(entity.getWorkspaceId())`를 부른다. 목록·생성 API는 경로의 `workspaceId`로 먼저 확인한다.
+  - 통합 테스트 `DataIsolationApiTest`: B학원 원장이 A학원 워크스페이스 하위 API 37개(조회·변경 모두)를 호출하면 전부 404이고 A학원 데이터는 그대로다. 같은 학원 강사는 모두 볼 수 있고, 소속 전 사용자는 403 `NO_ACADEMY`.
 
 ### 3.8 워크스페이스 (학교 + 학년)
 
@@ -667,7 +673,7 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 | GET | `/api/workspaces/{id}/school-trends/summary` | 내 워크스페이스의 경향 요약 |
 
 - 학교 목록이 비어 있으면 시작할 때 `seed/schools.json`(시연용 학교와 별칭)을 넣습니다.
-- 회원·학원(#6, #7) 전까지는 현재 학원을 1번으로 봅니다 (`CurrentAcademy`, TODO(#6)). 카드 요약(기출 수, 프로필 상태)은 #14에서 추가합니다.
+- 현재 학원은 항상 `X-User-Id` 사용자에서 꺼냅니다 (`CurrentAcademy`). 카드 요약(기출 수, 프로필 상태)은 #14에서 추가합니다.
 
 ### 기출과 출제 프로필
 

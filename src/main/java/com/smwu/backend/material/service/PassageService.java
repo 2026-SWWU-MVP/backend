@@ -7,7 +7,7 @@ import com.smwu.backend.material.domain.Passage;
 import com.smwu.backend.material.dto.PassageRequest;
 import com.smwu.backend.material.dto.PassageResponse;
 import com.smwu.backend.material.repository.PassageRepository;
-import com.smwu.backend.profile.service.ProfileQueryService;
+import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ public class PassageService {
 
     private final PassageRepository passageRepository;
     private final MaterialService materialService;
-    private final ProfileQueryService profileQueryService;
+    private final WorkspaceAccessChecker accessChecker;
 
     @Transactional(readOnly = true)
     public List<PassageResponse> list(Long materialId) {
@@ -64,7 +64,7 @@ public class PassageService {
 
     public Passage getPassage(Long passageId) {
         Passage passage = passageRepository.findById(passageId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        profileQueryService.checkWorkspaceAccess(passage.getWorkspaceId());
+        accessChecker.check(passage.getWorkspaceId());
         return passage;
     }
 

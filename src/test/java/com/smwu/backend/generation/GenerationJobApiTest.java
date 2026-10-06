@@ -2,6 +2,7 @@ package com.smwu.backend.generation;
 
 import com.jayway.jsonpath.JsonPath;
 import com.smwu.backend.document.TestPdfs;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,7 +12,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -29,7 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class GenerationJobApiTest {
 
-    private static final AtomicLong WORKSPACE_IDS = new AtomicLong(15000);
+    @Autowired
+    private TestWorkspaces workspaces;
     private static final String PASSAGES = """
             # Bringing New Life to Old Cities
             As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. When this happens, a collaboration between the local government and citizens is an effective way to revitalize the area.
@@ -42,7 +43,7 @@ class GenerationJobApiTest {
 
     @Test
     void 지문_2개_유형_2개로_4문항을_병렬_생성하고_순서대로_돌려준다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         long profileId = confirmedProfile(workspaceId);
         List<Long> passageIds = passages(workspaceId);
 
@@ -92,7 +93,7 @@ class GenerationJobApiTest {
 
     @Test
     void 유형_구성을_비우면_프로필의_지문당_유형_구성을_쓴다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         long profileId = confirmedProfile(workspaceId);
         List<Long> passageIds = passages(workspaceId);
 
@@ -116,10 +117,10 @@ class GenerationJobApiTest {
 
     @Test
     void 잘못된_요청() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         long profileId = confirmedProfile(workspaceId);
         List<Long> passageIds = passages(workspaceId);
-        long otherWorkspace = WORKSPACE_IDS.incrementAndGet();
+        long otherWorkspace = workspaces.create();
         List<Long> otherPassages = passages(otherWorkspace);
 
         // 다른 워크스페이스의 지문

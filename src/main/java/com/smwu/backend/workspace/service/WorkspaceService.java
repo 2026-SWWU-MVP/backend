@@ -30,6 +30,7 @@ public class WorkspaceService {
     private final SchoolRepository schoolRepository;
     private final SchoolService schoolService;
     private final CurrentAcademy currentAcademy;
+    private final WorkspaceAccessChecker accessChecker;
     private final PastExamRepository pastExamRepository;
     private final MaterialRepository materialRepository;
     private final SchoolProfileRepository profileRepository;
@@ -79,10 +80,8 @@ public class WorkspaceService {
         workspaceRepository.delete(workspace);
     }
 
-    /** 다른 학원의 워크스페이스는 존재 자체를 알리지 않도록 404 */
+    /** 다른 학원의 워크스페이스는 존재 자체를 알리지 않도록 404 ({@link WorkspaceAccessChecker}) */
     public Workspace getWorkspace(Long workspaceId) {
-        return workspaceRepository.findById(workspaceId)
-                .filter(w -> w.getAcademyId().equals(currentAcademy.academyId()))
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        return accessChecker.get(workspaceId);
     }
 }

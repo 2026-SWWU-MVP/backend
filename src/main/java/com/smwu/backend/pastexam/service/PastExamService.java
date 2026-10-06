@@ -14,6 +14,7 @@ import com.smwu.backend.pastexam.repository.PastExamRepository;
 import com.smwu.backend.pastexam.repository.PastPassageRepository;
 import com.smwu.backend.pastexam.repository.PastQuestionRepository;
 import com.smwu.backend.pastexam.event.PastExamDeletedEvent;
+import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class PastExamService {
     private final PastQuestionRepository pastQuestionRepository;
     private final PastPassageRepository pastPassageRepository;
     private final FileStorage fileStorage;
+    private final WorkspaceAccessChecker accessChecker;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -118,11 +120,9 @@ public class PastExamService {
         return exam;
     }
 
-    /**
-     * TODO(#10): WorkspaceAccessChecker로 현재 사용자의 학원 워크스페이스인지 확인 (아니면 404).
-     * 플랫폼 트랙의 로그인(#6)·워크스페이스(#9)·데이터 격리(#10)가 들어오면 연결한다.
-     */
+    /** 현재 사용자의 학원 워크스페이스인지 확인 (아니면 404) */
     private void checkWorkspaceAccess(Long workspaceId) {
+        accessChecker.check(workspaceId);
     }
 
     private void deleteFileOnRollback(String filePath) {

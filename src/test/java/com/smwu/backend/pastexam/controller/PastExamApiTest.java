@@ -2,6 +2,7 @@ package com.smwu.backend.pastexam.controller;
 
 import com.jayway.jsonpath.JsonPath;
 import com.smwu.backend.document.TestPdfs;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,7 +12,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -33,14 +33,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PastExamApiTest {
 
     /** 테스트끼리 데이터가 섞이지 않게 워크스페이스 ID를 다르게 쓴다 */
-    private static final AtomicLong WORKSPACE_IDS = new AtomicLong(1000);
+    @Autowired
+    private TestWorkspaces workspaces;
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
     void 업로드_추출_조회_수정_흐름() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
 
         // 1. 업로드
         String uploaded = mockMvc.perform(upload(workspaceId, pdf(TestPdfs.textPdf(2))))
@@ -103,7 +104,7 @@ class PastExamApiTest {
 
     @Test
     void 없는_지문을_참조하도록_수정하면_400() throws Exception {
-        long examId = uploadAndExtract(WORKSPACE_IDS.incrementAndGet());
+        long examId = uploadAndExtract(workspaces.create());
         String result = mockMvc.perform(get("/api/past-exams/{id}/questions", examId))
                 .andReturn().getResponse().getContentAsString();
         long questionId = ((Number) JsonPath.read(result, "$.questions[0].id")).longValue();
@@ -117,7 +118,7 @@ class PastExamApiTest {
 
     @Test
     void 추출_전에는_수정할_수_없다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         String uploaded = mockMvc.perform(upload(workspaceId, pdf(TestPdfs.blankPdf(1))))
                 .andExpect(jsonPath("$.scanned").value(true))
                 .andReturn().getResponse().getContentAsString();
@@ -133,7 +134,7 @@ class PastExamApiTest {
     void PDF가_아니면_400() throws Exception {
         MockMultipartFile hwp = new MockMultipartFile("file", "exam.hwp", "application/octet-stream", new byte[]{1, 2, 3, 4, 5, 6});
 
-        mockMvc.perform(upload(WORKSPACE_IDS.incrementAndGet(), hwp))
+        mockMvc.perform(upload(workspaces.create(), hwp))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_FILE"))
                 .andExpect(jsonPath("$.message").value("PDF 파일만 올릴 수 있습니다. HWP나 사진은 PDF로 변환해 주세요."));
@@ -141,7 +142,7 @@ class PastExamApiTest {
 
     @Test
     void 시험_정보가_빠지거나_잘못되면_400() throws Exception {
-        mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", WORKSPACE_IDS.incrementAndGet())
+        mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", workspaces.create())
                         .file(pdf(TestPdfs.textPdf(1)))
                         .param("examYear", "2025")
                         .param("semester", "3")
@@ -149,14 +150,14 @@ class PastExamApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", WORKSPACE_IDS.incrementAndGet())
+        mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", workspaces.create())
                         .param("examYear", "2025").param("semester", "1").param("examType", "MIDTERM"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void 삭제하면_조회되지_않는다() throws Exception {
-        long examId = uploadAndExtract(WORKSPACE_IDS.incrementAndGet());
+        long examId = uploadAndExtract(workspaces.create());
 
         mockMvc.perform(delete("/api/past-exams/{id}", examId)).andExpect(status().isNoContent());
         mockMvc.perform(get("/api/past-exams/{id}", examId))

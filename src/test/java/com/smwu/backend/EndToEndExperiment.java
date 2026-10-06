@@ -5,6 +5,7 @@ import com.smwu.backend.pastexam.extraction.QuestionType;
 import com.smwu.backend.problem.domain.Problem;
 import com.smwu.backend.problem.domain.ValidationStatus;
 import com.smwu.backend.problem.repository.ProblemRepository;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -64,7 +65,6 @@ class EndToEndExperiment {
 
     private static final Path INPUT_DIR = Path.of("experiments", "exams");
     private static final Path OUTPUT_DIR = Path.of("build", "experiments", "e2e");
-    private static final long WORKSPACE_ID = 1;
     private static final int MIN_WORDS = 90;
     private static final String FEEDBACK = "학생들 말로는 이번 서술형은 어구 배열 위주로 낸다고 하심";
 
@@ -73,6 +73,9 @@ class EndToEndExperiment {
 
     @Autowired
     private ProblemRepository problemRepository;
+
+    @Autowired
+    private TestWorkspaces workspaces;
 
     private final JsonMapper objectMapper = JsonMapper.builder().build();
     private final Map<String, Long> timings = new LinkedHashMap<>();
@@ -84,10 +87,11 @@ class EndToEndExperiment {
         Assumptions.assumeTrue(examPdf != null && materialPdf != null, "experiments/exams/에 PDF가 없어서 건너뜀");
         int target = Integer.parseInt(env("TARGET_PROBLEMS", "50"));
         Files.createDirectories(OUTPUT_DIR);
+        long workspaceId = workspaces.create();
 
         // 1. 기출 → 프로필 → 강사 의견 → 확정
         long started = System.currentTimeMillis();
-        long examId = id(mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", WORKSPACE_ID)
+        long examId = id(mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", workspaceId)
                         .file(new MockMultipartFile("file", examPdf.getFileName().toString(), "application/pdf", Files.readAllBytes(examPdf)))
                         .param("examYear", "2025").param("semester", "2").param("examType", "MIDTERM"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
@@ -97,7 +101,7 @@ class EndToEndExperiment {
         lap("기출 추출", started);
 
         started = System.currentTimeMillis();
-        String v1 = mockMvc.perform(post("/api/workspaces/{id}/profiles", WORKSPACE_ID))
+        String v1 = mockMvc.perform(post("/api/workspaces/{id}/profiles", workspaceId))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         lap("프로필 v1 (통계 + 규칙 요약)", started);
 
@@ -113,7 +117,7 @@ class EndToEndExperiment {
 
         // 2. 시험범위 PDF → 지문 분리
         started = System.currentTimeMillis();
-        long materialId = id(mockMvc.perform(multipart("/api/workspaces/{id}/materials", WORKSPACE_ID)
+        long materialId = id(mockMvc.perform(multipart("/api/workspaces/{id}/materials", workspaceId)
                         .file(new MockMultipartFile("file", materialPdf.getFileName().toString(), "application/pdf",
                                 Files.readAllBytes(materialPdf))))
                 .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
@@ -131,7 +135,7 @@ class EndToEndExperiment {
                 .toList();
 
         // 3. 생성 작업 (확정 프로필의 지문당 유형 구성 그대로)
-        long jobId = id(mockMvc.perform(post("/api/workspaces/{id}/generation-jobs", WORKSPACE_ID)
+        long jobId = id(mockMvc.perform(post("/api/workspaces/{id}/generation-jobs", workspaceId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("profileId", id(confirmed), "passageIds", passageIds))))
                 .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());

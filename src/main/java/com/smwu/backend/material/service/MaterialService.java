@@ -12,7 +12,7 @@ import com.smwu.backend.material.dto.TextMaterialRequest;
 import com.smwu.backend.material.repository.MaterialRepository;
 import com.smwu.backend.material.repository.PassageRepository;
 import com.smwu.backend.material.service.PassageSplitter.SplitPassage;
-import com.smwu.backend.profile.service.ProfileQueryService;
+import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,11 +39,11 @@ public class MaterialService {
     private final PassageRepository passageRepository;
     private final FileStorage fileStorage;
     private final MaterialSplitRunner splitRunner;
-    private final ProfileQueryService profileQueryService;
+    private final WorkspaceAccessChecker accessChecker;
 
     @Transactional
     public MaterialResponse uploadPdf(Long workspaceId, MultipartFile file, String title) {
-        checkWorkspaceAccess(workspaceId);
+        accessChecker.check(workspaceId);
         PdfUpload.Validated pdf = PdfUpload.validate(file, MAX_PAGES, "시험범위 PDF", "material.pdf");
         String filePath = fileStorage.save(STORAGE_DIR, "pdf", pdf.content());
         String resolvedTitle = title == null || title.isBlank() ? pdf.filename().replaceFirst("(?i)\\.pdf$", "") : title.strip();
@@ -71,7 +71,7 @@ public class MaterialService {
 
     @Transactional
     public MaterialResponse uploadText(Long workspaceId, TextMaterialRequest request) {
-        checkWorkspaceAccess(workspaceId);
+        accessChecker.check(workspaceId);
         List<SplitPassage> split = PassageSplitter.splitText(request.text());
         if (split.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "지문을 입력해 주세요.");
@@ -91,7 +91,7 @@ public class MaterialService {
 
     @Transactional(readOnly = true)
     public List<MaterialResponse> list(Long workspaceId) {
-        checkWorkspaceAccess(workspaceId);
+        accessChecker.check(workspaceId);
         List<Material> materials = materialRepository.findByWorkspaceIdOrderByIdDesc(workspaceId);
         Map<Long, Long> counts = new HashMap<>();
         if (!materials.isEmpty()) {
@@ -141,13 +141,8 @@ public class MaterialService {
 
     public Material getMaterial(Long materialId) {
         Material material = materialRepository.findById(materialId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        checkWorkspaceAccess(material.getWorkspaceId());
+        accessChecker.check(material.getWorkspaceId());
         return material;
-    }
-
-    /** TODO(#10): WorkspaceAccessChecker 연결 (다른 API와 같은 위치에서 함께) */
-    private void checkWorkspaceAccess(Long workspaceId) {
-        profileQueryService.checkWorkspaceAccess(workspaceId);
     }
 
     private static String truncate(String title) {

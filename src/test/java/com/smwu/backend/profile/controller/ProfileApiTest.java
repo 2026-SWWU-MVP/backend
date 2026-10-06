@@ -2,6 +2,7 @@ package com.smwu.backend.profile.controller;
 
 import com.jayway.jsonpath.JsonPath;
 import com.smwu.backend.document.TestPdfs;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,7 +10,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -28,14 +28,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ProfileApiTest {
 
-    private static final AtomicLong WORKSPACE_IDS = new AtomicLong(5000);
+    @Autowired
+    private TestWorkspaces workspaces;
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
     void 기출로_프로필을_만들고_다시_분석하면_새_버전이_된다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         uploadAndExtract(workspaceId);
 
         String created = mockMvc.perform(post("/api/workspaces/{id}/profiles", workspaceId))
@@ -94,7 +95,7 @@ class ProfileApiTest {
 
     @Test
     void 추출된_기출이_없으면_409() throws Exception {
-        mockMvc.perform(post("/api/workspaces/{id}/profiles", WORKSPACE_IDS.incrementAndGet()))
+        mockMvc.perform(post("/api/workspaces/{id}/profiles", workspaces.create()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("NO_EXTRACTED_PAST_EXAM"));
     }
