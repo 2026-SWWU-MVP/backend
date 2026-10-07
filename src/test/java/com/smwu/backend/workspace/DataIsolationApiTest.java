@@ -240,6 +240,7 @@ class DataIsolationApiTest {
         r.put("문항 검수", patch("/api/problems/{id}", problemId).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"reviewStatus\": \"REJECTED\"}"));
         r.put("워크스페이스 문항 목록", get("/api/workspaces/{id}/problems", workspaceId));
+        r.put("검수 통계", get("/api/workspaces/{id}/review-stats", workspaceId));
         r.put("시험지 만들기", post("/api/workspaces/{id}/worksheets", workspaceId).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\": \"x\", \"problemIds\": [" + problemId + "]}"));
         r.put("내 워크스페이스에 남의 문항으로 시험지", post("/api/workspaces/{id}/worksheets", otherWorkspace)

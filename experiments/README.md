@@ -104,3 +104,13 @@ EXAM_FILTER=현대 MATERIAL_FILTER=압구정 TARGET_PROBLEMS=30 ./gradlew llmTes
 ```
 
 결과: `build/experiments/trend/RESULTS.md`, 정리: [RESULTS-trend.md](RESULTS-trend.md)
+
+## 강사 검수 기록 반영 실험 (이슈 #42)
+
+같은 지문으로 어구 배열을 검수 기록 없이 / 있이 만들어, 기록이 요구한 방향(조각 크기, 해설 길이)으로 바뀌는지 잽니다.
+
+```bash
+EXPERIMENT_FILTER=압구정 ./gradlew llmTest --tests '*TeacherReviewExperiment'
+```
+
+결과: `build/experiments/teacher-review/RESULTS.md`, 정리: [RESULTS-teacher-review.md](RESULTS-teacher-review.md)

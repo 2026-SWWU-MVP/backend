@@ -73,6 +73,22 @@ class ProblemGeneratorTest {
             List.of(new GenerationContext.Example("어구 배열", "발문: 윗글에 나온 문장이 되도록 배열하시오.\n[보기] a / b / c")));
 
     @Test
+    void 같은_유형의_강사_검수_기록만_프롬프트에_들어간다() {
+        GenerationContext withReviews = new GenerationContext(9L, List.of(), List.of(), List.of(), List.of(),
+                java.util.Map.of(QuestionType.SENTENCE_ORDER, List.of("폐기 (사유: 조각이 너무 짧음): However, ...")));
+        responses.add(VALID_ORDER);
+        generator.generate(withReviews, PASSAGE, QuestionType.SENTENCE_ORDER, ProblemOptions.defaults(), 1L);
+        assertThat(requests.get(0).userPrompt())
+                .contains("## 이 학원 강사의 검수 기록 (같은 유형, 최근순)\n- 폐기 (사유: 조각이 너무 짧음): However, ...");
+        assertThat(requests.get(0).systemPrompt()).contains("폐기 사유에 해당하는 문제는 만들지 않는다");
+
+        requests.clear();
+        responses.add(VALID_ORDER);
+        generator.generate(context, PASSAGE, QuestionType.SENTENCE_ORDER, ProblemOptions.defaults(), 1L);
+        assertThat(requests.get(0).userPrompt()).contains("## 이 학원 강사의 검수 기록 (같은 유형, 최근순)\n(없음)");
+    }
+
+    @Test
     void 같은_지문으로_이미_만든_문항과_정답이_같으면_다시_생성한다() {
         responses.add(VALID_ORDER);
         ProblemGenerator.Outcome first = generator.generate(context, PASSAGE, QuestionType.SENTENCE_ORDER, ProblemOptions.defaults(), 1L);
