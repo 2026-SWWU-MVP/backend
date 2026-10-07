@@ -4,6 +4,7 @@ import com.smwu.backend.pastexam.domain.PastExam;
 import com.smwu.backend.pastexam.domain.PastExamStatus;
 import com.smwu.backend.pastexam.dto.PastExamResponse;
 import com.smwu.backend.pastexam.repository.PastExamRepository;
+import com.smwu.backend.user.service.UserNames;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -28,6 +29,7 @@ public class PastExamExtractionService {
     private final PastExamService pastExamService;
     private final PastExamRepository pastExamRepository;
     private final PastExamExtractionRunner extractionRunner;
+    private final UserNames userNames;
 
     @Transactional
     public PastExamResponse requestExtraction(Long examId) {
@@ -41,7 +43,7 @@ public class PastExamExtractionService {
                 extractionRunner.run(examId);
             }
         });
-        return PastExamResponse.of(exam, 0, 0);
+        return PastExamResponse.of(exam, 0, 0, userNames.name(exam.getCreatedBy()));
     }
 
     /** 서버가 추출 중에 꺼지면 EXTRACTING에서 멈추므로, 시작할 때 실패로 바꿔 다시 추출할 수 있게 한다 */

@@ -21,6 +21,9 @@ import java.util.Map;
  * @param examples          few-shot 예시로 쓸 대표 서답형 기출 문항
  * @param sourceExams       분석에 쓴 기출 시험지
  * @param changeSummary     이전 버전 대비 바뀐 점
+ * @param teacherNotes      강사 의견 원문과 작성자
+ * @param createdByName     이 버전을 만든 사람 (로그인 기능 이전 데이터는 null)
+ * @param confirmedByName   확정한 사람
  */
 public record ProfileResponse(
         Long id,
@@ -32,14 +35,26 @@ public record ProfileResponse(
         ProfileStats stats,
         List<RuleView> rules,
         Map<QuestionType, Integer> typeMixPerPassage,
-        List<TeacherNote> teacherNotes,
+        List<NoteView> teacherNotes,
         List<String> changeSummary,
         List<ExampleView> examples,
         List<ExamRef> sourceExams,
         String llmModel,
         LocalDateTime createdAt,
-        LocalDateTime confirmedAt
+        LocalDateTime confirmedAt,
+        Long createdBy,
+        String createdByName,
+        Long confirmedBy,
+        String confirmedByName
 ) {
+
+    /** @param persistent 다음 시험에도 적용하는 의견이면 true */
+    public record NoteView(String text, boolean persistent, Long createdBy, String createdByName) {
+
+        public static NoteView of(TeacherNote note, String createdByName) {
+            return new NoteView(note.text(), note.persistent(), note.createdBy(), createdByName);
+        }
+    }
 
     public record RuleView(
             String id,

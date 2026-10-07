@@ -12,11 +12,13 @@ import com.smwu.backend.profile.domain.SchoolProfile;
 import com.smwu.backend.profile.dto.ProfileResponse;
 import com.smwu.backend.profile.dto.ProfileResponse.ExamRef;
 import com.smwu.backend.profile.dto.ProfileResponse.ExampleView;
+import com.smwu.backend.profile.dto.ProfileResponse.NoteView;
 import com.smwu.backend.profile.dto.ProfileResponse.QuestionRef;
 import com.smwu.backend.profile.dto.ProfileResponse.RuleView;
 import com.smwu.backend.profile.dto.ProfileSummaryResponse;
 import com.smwu.backend.profile.repository.SchoolProfileRepository;
 import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
+import com.smwu.backend.user.service.UserNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class ProfileQueryService {
     private final PastQuestionRepository pastQuestionRepository;
     private final PastExamRepository pastExamRepository;
     private final WorkspaceAccessChecker accessChecker;
+    private final UserNames userNames;
 
     @Transactional(readOnly = true)
     public List<ProfileSummaryResponse> list(Long workspaceId) {
@@ -75,10 +78,21 @@ public class ProfileQueryService {
                 .map(id -> new ExamRef(id, exams.containsKey(id) ? RuleSummarizer.examTitle(exams.get(id)) : "삭제된 기출"))
                 .toList();
 
+        Set<Long> userIds = new HashSet<>();
+        userIds.add(profile.getCreatedBy());
+        userIds.add(profile.getConfirmedBy());
+        profile.getTeacherNotes().forEach(n -> userIds.add(n.createdBy()));
+        Map<Long, String> names = userNames.names(userIds);
+        List<NoteView> notes = profile.getTeacherNotes().stream()
+                .map(n -> NoteView.of(n, n.createdBy() == null ? null : names.get(n.createdBy())))
+                .toList();
+
         return new ProfileResponse(profile.getId(), profile.getWorkspaceId(), profile.getVersion(), profile.getParentId(),
                 profile.getStatus(), profile.getOrigin(), profile.getStats(), rules, profile.getTypeMixPerPassage(),
-                List.copyOf(profile.getTeacherNotes()), List.copyOf(profile.getChangeSummary()), examples, sourceExams,
-                profile.getLlmModel(), profile.getCreatedAt(), profile.getConfirmedAt());
+                notes, List.copyOf(profile.getChangeSummary()), examples, sourceExams,
+                profile.getLlmModel(), profile.getCreatedAt(), profile.getConfirmedAt(),
+                profile.getCreatedBy(), profile.getCreatedBy() == null ? null : names.get(profile.getCreatedBy()),
+                profile.getConfirmedBy(), profile.getConfirmedBy() == null ? null : names.get(profile.getConfirmedBy()));
     }
 
     public SchoolProfile getProfile(Long profileId) {

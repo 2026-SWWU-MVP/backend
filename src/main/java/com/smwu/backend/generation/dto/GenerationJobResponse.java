@@ -29,12 +29,16 @@ public record GenerationJobResponse(
         long failed,
         String failureReason,
         LocalDateTime createdAt,
-        LocalDateTime finishedAt
+        LocalDateTime finishedAt,
+        Long createdBy,
+        String createdByName
 ) {
 
-    public static GenerationJobResponse of(GenerationJob job, long passed, long needsReview, long validationFailed) {
+    public static GenerationJobResponse of(GenerationJob job, long passed, long needsReview, long validationFailed,
+                                           String createdByName) {
         return new GenerationJobResponse(job.getId(), job.getWorkspaceId(), job.getProfileId(), job.getStatus(), job.getPlan(),
                 job.getTotal(), job.getCompleted(), job.progressPercent(), passed, needsReview,
-                validationFailed + job.getErrors(), job.getFailureReason(), job.getCreatedAt(), job.getFinishedAt());
+                validationFailed + job.getErrors(), job.getFailureReason(), job.getCreatedAt(), job.getFinishedAt(),
+                job.getCreatedBy(), createdByName);
     }
 }

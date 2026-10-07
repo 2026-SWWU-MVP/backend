@@ -67,12 +67,13 @@ public class Material extends BaseTimeEntity {
 
     private String llmModel;
 
-    /** TODO(#6): 로그인 사용자 ID */
+    /** 올린 사용자 (로그인 기능 이전 데이터는 null) */
     private Long createdBy;
 
     public static Material pdf(Long workspaceId, String title, String filePath, String originalFilename, int pageCount,
-                               boolean textLayer) {
+                               boolean textLayer, Long createdBy) {
         Material m = new Material();
+        m.createdBy = createdBy;
         m.workspaceId = workspaceId;
         m.title = title;
         m.sourceType = MaterialSourceType.PDF;
@@ -85,8 +86,9 @@ public class Material extends BaseTimeEntity {
     }
 
     /** 붙여넣은 텍스트는 코드가 바로 나누므로 처음부터 SPLIT */
-    public static Material text(Long workspaceId, String title) {
+    public static Material text(Long workspaceId, String title, Long createdBy) {
         Material m = new Material();
+        m.createdBy = createdBy;
         m.workspaceId = workspaceId;
         m.title = title;
         m.sourceType = MaterialSourceType.TEXT;

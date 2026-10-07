@@ -13,6 +13,8 @@ import com.smwu.backend.material.repository.MaterialRepository;
 import com.smwu.backend.material.repository.PassageRepository;
 import com.smwu.backend.material.service.PassageSplitter.SplitPassage;
 import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
+import com.smwu.backend.auth.web.CurrentUserContext;
+import com.smwu.backend.user.service.UserNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,11 @@ public class MaterialService {
     private final FileStorage fileStorage;
     private final MaterialSplitRunner splitRunner;
     private final WorkspaceAccessChecker accessChecker;
+    private final UserNames userNames;
+
+    private MaterialResponse toResponse(Material material, long passageCount) {
+        return MaterialResponse.of(material, passageCount, userNames.name(material.getCreatedBy()));
+    }
 
     @Transactional
     public MaterialResponse uploadPdf(Long workspaceId, MultipartFile file, String title) {
@@ -48,7 +55,7 @@ public class MaterialService {
         String filePath = fileStorage.save(STORAGE_DIR, "pdf", pdf.content());
         String resolvedTitle = title == null || title.isBlank() ? pdf.filename().replaceFirst("(?i)\\.pdf$", "") : title.strip();
         Material material = Material.pdf(workspaceId, truncate(resolvedTitle), filePath, pdf.filename(),
-                pdf.info().pageCount(), pdf.info().textLayer());
+                pdf.info().pageCount(), pdf.info().textLayer(), CurrentUserContext.userIdOrNull());
         material.startSplit();
         materialRepository.save(material);
 
@@ -66,7 +73,7 @@ public class MaterialService {
                 }
             }
         });
-        return MaterialResponse.of(material, 0);
+        return toResponse(material, 0);
     }
 
     @Transactional
@@ -81,12 +88,12 @@ public class MaterialService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST,
                     "지문 하나는 " + PassageSplitter.MAX_PASSAGE_CHARS + "자 이하입니다. 여러 지문은 --- 줄로 구분해 주세요.");
         }
-        Material material = materialRepository.save(Material.text(workspaceId, request.title().strip()));
+        Material material = materialRepository.save(Material.text(workspaceId, request.title().strip(), CurrentUserContext.userIdOrNull()));
         for (int i = 0; i < split.size(); i++) {
             SplitPassage p = split.get(i);
             passageRepository.save(new Passage(material.getId(), workspaceId, i + 1, p.title(), p.sourceLabel(), p.text()));
         }
-        return MaterialResponse.of(material, split.size());
+        return toResponse(material, split.size());
     }
 
     @Transactional(readOnly = true)
@@ -98,13 +105,16 @@ public class MaterialService {
             passageRepository.countByMaterial(materials.stream().map(Material::getId).toList())
                     .forEach(row -> counts.put((Long) row[0], (Long) row[1]));
         }
-        return materials.stream().map(m -> MaterialResponse.of(m, counts.getOrDefault(m.getId(), 0L))).toList();
+        Map<Long, String> names = userNames.names(materials.stream().map(Material::getCreatedBy).toList());
+        return materials.stream()
+                .map(m -> MaterialResponse.of(m, counts.getOrDefault(m.getId(), 0L), names.get(m.getCreatedBy())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public MaterialResponse get(Long materialId) {
         Material material = getMaterial(materialId);
-        return MaterialResponse.of(material, passageRepository.countByMaterialId(materialId));
+        return toResponse(material, passageRepository.countByMaterialId(materialId));
     }
 
     /** 지문 다시 나누기 (실패했거나 결과가 마음에 들지 않을 때). 기존 지문은 새 결과로 바뀐다 */
@@ -118,7 +128,7 @@ public class MaterialService {
                 splitRunner.run(materialId);
             }
         });
-        return MaterialResponse.of(material, passageRepository.countByMaterialId(materialId));
+        return toResponse(material, passageRepository.countByMaterialId(materialId));
     }
 
     @Transactional

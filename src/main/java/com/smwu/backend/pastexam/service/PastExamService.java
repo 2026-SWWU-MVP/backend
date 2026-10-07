@@ -15,6 +15,8 @@ import com.smwu.backend.pastexam.repository.PastPassageRepository;
 import com.smwu.backend.pastexam.repository.PastQuestionRepository;
 import com.smwu.backend.pastexam.event.PastExamDeletedEvent;
 import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
+import com.smwu.backend.auth.web.CurrentUserContext;
+import com.smwu.backend.user.service.UserNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class PastExamService {
     private final FileStorage fileStorage;
     private final WorkspaceAccessChecker accessChecker;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserNames userNames;
 
     @Transactional
     public PastExamResponse upload(Long workspaceId, MultipartFile file, UploadPastExamRequest request) {
@@ -60,10 +63,11 @@ public class PastExamService {
                 .fileSize(content.length)
                 .pageCount(info.pageCount())
                 .textLayer(info.textLayer())
+                .createdBy(CurrentUserContext.userIdOrNull())
                 .build();
         pastExamRepository.save(exam);
         deleteFileOnRollback(filePath);
-        return PastExamResponse.of(exam, 0, 0);
+        return PastExamResponse.of(exam, 0, 0, userNames.name(exam.getCreatedBy()));
     }
 
     @Transactional(readOnly = true)
@@ -77,10 +81,11 @@ public class PastExamService {
                 c[row[1] == QuestionSection.OBJECTIVE ? 0 : 1] = (Long) row[2];
             }
         }
+        Map<Long, String> names = userNames.names(exams.stream().map(PastExam::getCreatedBy).toList());
         return exams.stream()
                 .map(e -> {
                     long[] c = counts.getOrDefault(e.getId(), new long[2]);
-                    return PastExamResponse.of(e, c[0], c[1]);
+                    return PastExamResponse.of(e, c[0], c[1], names.get(e.getCreatedBy()));
                 })
                 .toList();
     }
@@ -90,7 +95,8 @@ public class PastExamService {
         PastExam exam = getExam(examId);
         return PastExamResponse.of(exam,
                 pastQuestionRepository.countByPastExamIdAndSection(examId, QuestionSection.OBJECTIVE),
-                pastQuestionRepository.countByPastExamIdAndSection(examId, QuestionSection.SUBJECTIVE));
+                pastQuestionRepository.countByPastExamIdAndSection(examId, QuestionSection.SUBJECTIVE),
+                userNames.name(exam.getCreatedBy()));
     }
 
     @Transactional

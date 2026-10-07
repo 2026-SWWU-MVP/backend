@@ -22,6 +22,7 @@ import com.smwu.backend.schooldb.service.SchoolDbProfileSource;
 import com.smwu.backend.schooldb.service.SchoolDbProfileSource.Input;
 import com.smwu.backend.schooldb.service.SchoolTrendCalculator;
 import com.smwu.backend.schooldb.service.SchoolTrendSummaryService;
+import com.smwu.backend.auth.web.CurrentUserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -107,6 +108,7 @@ public class ProfileAnalysisService {
                     .exampleQuestionIds(summary.exampleQuestionIds())
                     .sourceExamIds(source.exams().stream().map(PastExam::getId).toList())
                     .llmModel(summary.model())
+                    .createdBy(CurrentUserContext.userIdOrNull())
                     .build();
             return profileRepository.save(profile);
         });
