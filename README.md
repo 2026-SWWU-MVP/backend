@@ -22,6 +22,17 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 
 3. Swagger UI: http://localhost:8080/swagger-ui/index.html
 
+### PostgreSQL 없이 실행 (H2, 임시)
+
+PostgreSQL을 설치하기 어려울 때(프론트 연동, 새 노트북 등)는 `h2` 프로필로 실행합니다. 파일 DB라 재시작해도 데이터가 남습니다 (`./storage/h2/`, 커밋되지 않음).
+
+```bash
+SPRING_PROFILES_ACTIVE=h2 ./gradlew bootRun
+```
+
+IntelliJ에서는 실행 설정의 Active profiles에 `h2`를 넣습니다. 데이터를 비우려면 서버를 끄고 `storage/h2` 폴더를 지웁니다.
+운영과 DB가 다르므로 발표 전 최종 점검은 PostgreSQL로 합니다.
+
 ### 환경변수
 
 기본값은 `src/main/resources/application.properties`에 있고, 필요한 것만 덮어씁니다.
