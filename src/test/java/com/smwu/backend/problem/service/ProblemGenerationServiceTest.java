@@ -11,6 +11,7 @@ import com.smwu.backend.problem.domain.ValidationStatus;
 import com.smwu.backend.problem.repository.ProblemRepository;
 import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.problem.type.ProblemOptions;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,7 +19,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,7 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ProblemGenerationServiceTest {
 
-    private static final AtomicLong WORKSPACE_IDS = new AtomicLong(9000);
+    @Autowired
+    private TestWorkspaces workspaces;
 
     /** Mock 응답과 맞는 지문 (출력예시 교과서 2과) */
     private static final PassageSource PASSAGE = new PassageSource(null, "Bringing New Life to Old Cities",
@@ -52,7 +53,7 @@ class ProblemGenerationServiceTest {
 
     @Test
     void 지문_하나로_요약문_빈칸과_어구_배열을_만들고_검증_결과를_저장한다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         long profileId = confirmedProfile(workspaceId);
 
         Problem blank = generationService.generate(profileId, PASSAGE, QuestionType.SUMMARY_BLANK, null, 1L);
@@ -84,7 +85,7 @@ class ProblemGenerationServiceTest {
 
     @Test
     void 지문과_맞지_않으면_재생성해도_실패해서_FAILED로_저장된다() throws Exception {
-        long profileId = confirmedProfile(WORKSPACE_IDS.incrementAndGet());
+        long profileId = confirmedProfile(workspaces.create());
         PassageSource other = new PassageSource(null, null, "Plants need sunlight and water to grow. Some plants live in deserts.");
 
         Problem problem = generationService.generate(profileId, other, QuestionType.SENTENCE_ORDER, null, 1L);
@@ -96,7 +97,7 @@ class ProblemGenerationServiceTest {
 
     @Test
     void 확정되지_않은_프로필로는_만들_수_없다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         uploadAndExtract(workspaceId);
         long draftId = id(mockMvc.perform(post("/api/workspaces/{id}/profiles", workspaceId)).andReturn().getResponse().getContentAsString());
 
@@ -108,7 +109,7 @@ class ProblemGenerationServiceTest {
 
     @Test
     void 아직_지원하지_않는_유형은_거부한다() throws Exception {
-        long profileId = confirmedProfile(WORKSPACE_IDS.incrementAndGet());
+        long profileId = confirmedProfile(workspaces.create());
 
         assertThatThrownBy(() -> generationService.generate(profileId, PASSAGE, QuestionType.SUBJ_SHORT_ANSWER, null, 1L))
                 .isInstanceOf(BusinessException.class)

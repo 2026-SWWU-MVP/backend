@@ -16,6 +16,7 @@ import com.smwu.backend.profile.dto.ProfileResponse.QuestionRef;
 import com.smwu.backend.profile.dto.ProfileResponse.RuleView;
 import com.smwu.backend.profile.dto.ProfileSummaryResponse;
 import com.smwu.backend.profile.repository.SchoolProfileRepository;
+import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class ProfileQueryService {
     private final SchoolProfileRepository profileRepository;
     private final PastQuestionRepository pastQuestionRepository;
     private final PastExamRepository pastExamRepository;
+    private final WorkspaceAccessChecker accessChecker;
 
     @Transactional(readOnly = true)
     public List<ProfileSummaryResponse> list(Long workspaceId) {
@@ -86,11 +88,9 @@ public class ProfileQueryService {
         return profile;
     }
 
-    /**
-     * TODO(#10): WorkspaceAccessChecker로 현재 사용자의 학원 워크스페이스인지 확인 (아니면 404).
-     * 기출 API(PastExamService.checkWorkspaceAccess)와 같은 시점에 연결한다.
-     */
+    /** 현재 사용자의 학원 워크스페이스인지 확인 (아니면 404). {@link WorkspaceAccessChecker} 참고 */
     public void checkWorkspaceAccess(Long workspaceId) {
+        accessChecker.check(workspaceId);
     }
 
     private static RuleView toRuleView(ProfileRule rule, Map<Long, PastQuestion> questions, Map<Long, PastExam> exams) {

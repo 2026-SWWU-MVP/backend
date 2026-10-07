@@ -69,7 +69,8 @@ public class TestUserMockMvcCustomizer implements MockMvcBuilderCustomizer {
         });
     }
 
-    private synchronized User testUser() {
+    /** 기본 테스트 사용자 (없으면 학원과 함께 만든다) */
+    public synchronized User testUser() {
         return userRepository.findByLoginId(LOGIN_ID).orElseGet(() -> {
             Academy academy = academyRepository.save(new Academy("테스트학원", AcademyPlan.BASIC));
             User user = new User(LOGIN_ID, "{test}", "테스트원장");

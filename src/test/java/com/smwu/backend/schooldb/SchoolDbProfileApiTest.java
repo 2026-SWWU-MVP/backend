@@ -2,8 +2,7 @@ package com.smwu.backend.schooldb;
 
 import com.jayway.jsonpath.JsonPath;
 import com.smwu.backend.document.TestPdfs;
-import com.smwu.backend.workspace.domain.Workspace;
-import com.smwu.backend.workspace.repository.WorkspaceRepository;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,12 +41,17 @@ class SchoolDbProfileApiTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private WorkspaceRepository workspaceRepository;
+    private TestWorkspaces workspaces;
+
+    /** 다른 학원 워크스페이스 → 그 학원 원장 (요청할 때 X-User-Id로 넣는다) */
+    private final java.util.Map<Long, Long> owners = new java.util.HashMap<>();
 
     @Test
     void 기출이_없는_신규_학원도_학교_DB로_프로필을_만들고_문제를_생성한다() throws Exception {
         long schoolId = school("신규학원지원고등학교");
-        long other = workspaceRepository.save(new Workspace(9002L, schoolId, 1, null)).getId();
+TestWorkspaces.Member otherAcademy = workspaces.newAcademy();
+        long other = workspaces.create(otherAcademy, schoolId, 1);
+        owners.put(other, otherAcademy.userId());
         extractedExam(other, 2025, 1, "MIDTERM");
         long mine = workspace(schoolId, 1);
 
@@ -87,7 +91,9 @@ class SchoolDbProfileApiTest {
     @Test
     void 내_기출과_같은_회차는_한_번만_세고_다른_회차만_더한다() throws Exception {
         long schoolId = school("회차합치기고등학교");
-        long other = workspaceRepository.save(new Workspace(9002L, schoolId, 2, null)).getId();
+TestWorkspaces.Member otherAcademy = workspaces.newAcademy();
+        long other = workspaces.create(otherAcademy, schoolId, 2);
+        owners.put(other, otherAcademy.userId());
         extractedExam(other, 2025, 1, "MIDTERM");
         extractedExam(other, 2024, 2, "FINAL");
         long mine = workspace(schoolId, 2);
@@ -126,19 +132,27 @@ class SchoolDbProfileApiTest {
     }
 
     private void extractedExam(long workspaceId, int year, int semester, String examType) throws Exception {
-        long examId = id(mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", workspaceId)
+        long examId = id(mockMvc.perform(as(workspaceId, multipart("/api/workspaces/{id}/past-exams", workspaceId))
                         .file(new MockMultipartFile("file", "exam.pdf", "application/pdf", TestPdfs.textPdf(1)))
                         .param("examYear", String.valueOf(year)).param("semester", String.valueOf(semester))
                         .param("examType", examType))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
-        mockMvc.perform(post("/api/past-exams/{id}/analyze", examId)).andExpect(status().isAccepted());
+        mockMvc.perform(as(workspaceId, post("/api/past-exams/{id}/analyze", examId))).andExpect(status().isAccepted());
         String state = null;
         for (int i = 0; i < 100 && !"EXTRACTED".equals(state); i++) {
             Thread.sleep(50);
-            state = JsonPath.read(mockMvc.perform(get("/api/past-exams/{id}", examId)).andReturn().getResponse().getContentAsString(),
+            state = JsonPath.read(mockMvc.perform(as(workspaceId, get("/api/past-exams/{id}", examId))).andReturn().getResponse().getContentAsString(),
                     "$.status");
         }
         assertThat(state).isEqualTo("EXTRACTED");
+    }
+
+    private <T extends org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder<?>> T as(long workspaceId, T request) {
+        Long owner = owners.get(workspaceId);
+        if (owner != null) {
+            request.header("X-User-Id", owner);
+        }
+        return request;
     }
 
     private static long id(String json) {

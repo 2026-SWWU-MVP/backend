@@ -1,6 +1,7 @@
 package com.smwu.backend.pastexam.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -46,12 +47,15 @@ class PastExamRealExtractionTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private TestWorkspaces workspaces;
+
     @Test
     void 실제_기출을_업로드하고_추출해서_저장한다() throws Exception {
         Path pdf = pickPdf();
         Assumptions.assumeTrue(pdf != null, "experiments/exams/에 PDF가 없어서 건너뜀");
 
-        String uploaded = mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", 1)
+        String uploaded = mockMvc.perform(multipart("/api/workspaces/{id}/past-exams", workspaces.create())
                         .file(new MockMultipartFile("file", pdf.getFileName().toString(), "application/pdf", Files.readAllBytes(pdf)))
                         .param("examYear", "2025").param("semester", "1").param("examType", "MIDTERM"))
                 .andExpect(status().isCreated())

@@ -11,6 +11,7 @@ import com.smwu.backend.problem.service.ProblemGenerationService;
 import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.problem.type.ProblemOptions;
 import com.smwu.backend.problem.type.ValidationCheck;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,7 +20,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -34,7 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ProblemApiTest {
 
-    private static final AtomicLong WORKSPACE_IDS = new AtomicLong(11000);
+    @Autowired
+    private TestWorkspaces workspaces;
     private static final PassageSource PASSAGE = new PassageSource(null, "Bringing New Life to Old Cities",
             "As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. "
                     + "When this happens, a collaboration between the local government and citizens is an effective way "
@@ -49,7 +50,7 @@ class ProblemApiTest {
 
     @Test
     void 생성된_문항을_조회하고_다시_생성하면_같은_ID로_덮어쓴다() throws Exception {
-        long profileId = confirmedProfile(WORKSPACE_IDS.incrementAndGet());
+        long profileId = confirmedProfile(workspaces.create());
         Problem problem = generationService.generate(profileId, PASSAGE, QuestionType.SUMMARY_BLANK, null, 1L);
 
         mockMvc.perform(get("/api/problems/{id}", problem.getId()))
@@ -72,7 +73,7 @@ class ProblemApiTest {
 
     @Test
     void NEEDS_REVIEW_문항은_상태와_이유가_응답에서_구분된다() throws Exception {
-        long profileId = confirmedProfile(WORKSPACE_IDS.incrementAndGet());
+        long profileId = confirmedProfile(workspaces.create());
         Problem generated = generationService.generate(profileId, PASSAGE, QuestionType.SUMMARY_BLANK, null, 1L);
         Problem needsReview = problemRepository.save(Problem.generated(generated.getWorkspaceId(), profileId, PASSAGE, null,
                 QuestionType.SUMMARY_BLANK, ProblemOptions.defaults(), null, ValidationStatus.NEEDS_REVIEW,

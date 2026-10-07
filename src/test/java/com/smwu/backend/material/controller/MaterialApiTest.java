@@ -2,6 +2,7 @@ package com.smwu.backend.material.controller;
 
 import com.jayway.jsonpath.JsonPath;
 import com.smwu.backend.document.TestPdfs;
+import com.smwu.backend.support.TestWorkspaces;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,7 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -27,14 +27,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class MaterialApiTest {
 
-    private static final AtomicLong WORKSPACE_IDS = new AtomicLong(13000);
+    @Autowired
+    private TestWorkspaces workspaces;
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
     void PDF를_올리면_백그라운드로_지문을_나눈다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         String uploaded = mockMvc.perform(multipart("/api/workspaces/{id}/materials", workspaceId)
                         .file(new MockMultipartFile("file", "교과서 2과.pdf", "application/pdf", TestPdfs.textPdf(2))))
                 .andExpect(status().isAccepted())
@@ -71,7 +72,7 @@ class MaterialApiTest {
 
     @Test
     void 텍스트를_붙여넣으면_바로_지문으로_나뉘고_지문을_수정_추가_삭제할_수_있다() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         String created = mockMvc.perform(post("/api/workspaces/{id}/materials/text", workspaceId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -117,7 +118,7 @@ class MaterialApiTest {
 
     @Test
     void 잘못된_입력과_삭제() throws Exception {
-        long workspaceId = WORKSPACE_IDS.incrementAndGet();
+        long workspaceId = workspaces.create();
         mockMvc.perform(multipart("/api/workspaces/{id}/materials", workspaceId)
                         .file(new MockMultipartFile("file", "a.hwp", "application/octet-stream", new byte[]{1, 2, 3, 4, 5, 6})))
                 .andExpect(status().isBadRequest())
