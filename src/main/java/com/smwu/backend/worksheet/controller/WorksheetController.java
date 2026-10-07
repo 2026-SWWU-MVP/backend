@@ -7,6 +7,8 @@ import com.smwu.backend.worksheet.dto.WorksheetDtos.WorksheetSummary;
 import com.smwu.backend.worksheet.pdf.WorksheetPdfService;
 import com.smwu.backend.worksheet.pdf.WorksheetPdfService.PdfFile;
 import com.smwu.backend.worksheet.service.WorksheetService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
@@ -28,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /** 시험지 구성 (#16)과 문제지·정답지 PDF (#18) */
+@Tag(name = "10. 시험지", description = "채택한 문항으로 시험지 구성 → 문제지·정답지 PDF")
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class WorksheetController {
     private final WorksheetPdfService pdfService;
 
     /** 채택한 문항으로 시험지 만들기. 채택 안 된 문항·다른 워크스페이스 문항·중복은 400 */
+    @Operation(summary = "시험지 만들기", description = "채택한 문항으로 시험지 만들기. 채택 안 된 문항·다른 워크스페이스 문항·중복은 400")
     @PostMapping("/workspaces/{workspaceId}/worksheets")
     @ResponseStatus(HttpStatus.CREATED)
     public WorksheetResponse create(@PathVariable Long workspaceId, @Valid @RequestBody CreateWorksheetRequest request) {
@@ -44,30 +48,35 @@ public class WorksheetController {
     }
 
     /** 시험지 목록 (최신순, 작성자 포함, 학원 내 공유) */
+    @Operation(summary = "시험지 목록", description = "시험지 목록 (최신순, 작성자 포함, 학원 내 공유)")
     @GetMapping("/workspaces/{workspaceId}/worksheets")
     public List<WorksheetSummary> list(@PathVariable Long workspaceId) {
         return worksheetService.list(workspaceId);
     }
 
     /** 시험지 본문 (미리보기): 지문 단위 묶음과 문항 */
+    @Operation(summary = "시험지 본문 (미리보기)", description = "시험지 본문 (미리보기): 지문 단위 묶음과 문항")
     @GetMapping("/worksheets/{worksheetId}")
     public WorksheetResponse get(@PathVariable Long worksheetId) {
         return worksheetService.get(worksheetId);
     }
 
     /** 제목·머리글·로고 표시·문항 구성 수정 */
+    @Operation(summary = "시험지 수정", description = "제목·머리글·로고 표시·문항 구성 수정")
     @PatchMapping("/worksheets/{worksheetId}")
     public WorksheetResponse update(@PathVariable Long worksheetId, @Valid @RequestBody UpdateWorksheetRequest request) {
         return worksheetService.update(worksheetId, request);
     }
 
     /** 문제지 PDF (1단 A4, 머리글·로고 매 페이지) */
+    @Operation(summary = "문제지 PDF", description = "문제지 PDF (1단 A4, 머리글·로고 매 페이지)")
     @GetMapping("/worksheets/{worksheetId}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable Long worksheetId) {
         return download(pdfService.render(worksheetId, false));
     }
 
     /** 정답지 PDF (같은 구성 + 정답·해설) */
+    @Operation(summary = "정답지 PDF", description = "정답지 PDF (같은 구성 + 정답·해설)")
     @GetMapping("/worksheets/{worksheetId}/answer-pdf")
     public ResponseEntity<byte[]> answerPdf(@PathVariable Long worksheetId) {
         return download(pdfService.render(worksheetId, true));
@@ -81,6 +90,7 @@ public class WorksheetController {
                 .body(file.content());
     }
 
+    @Operation(summary = "시험지 삭제")
     @DeleteMapping("/worksheets/{worksheetId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long worksheetId) {
