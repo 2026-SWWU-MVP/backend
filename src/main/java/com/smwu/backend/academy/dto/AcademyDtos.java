@@ -32,13 +32,14 @@ public final class AcademyDtos {
     /**
      * @param teacherCount 원장을 뺀 강사 수
      * @param maxTeachers  요금제의 최대 강사 수
+     * @param hasLogo      로고가 있으면 GET /api/academy/logo로 미리보기
      */
     public record AcademyResponse(Long id, String name, AcademyPlan plan, int teacherCount, int maxTeachers,
-                                  LocalDateTime createdAt) {
+                                  boolean hasLogo, Integer logoWidth, Integer logoHeight, LocalDateTime createdAt) {
 
         public static AcademyResponse of(Academy a, long teacherCount) {
             return new AcademyResponse(a.getId(), a.getName(), a.getPlan(), (int) teacherCount, a.getPlan().maxTeachers(),
-                    a.getCreatedAt());
+                    a.hasLogo(), a.getLogoWidth(), a.getLogoHeight(), a.getCreatedAt());
         }
     }
 

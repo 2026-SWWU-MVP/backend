@@ -6,10 +6,14 @@ import com.smwu.backend.academy.dto.AcademyDtos.InviteResponse;
 import com.smwu.backend.academy.dto.AcademyDtos.JoinRequest;
 import com.smwu.backend.academy.dto.AcademyDtos.MemberResponse;
 import com.smwu.backend.academy.service.AcademyService;
+import com.smwu.backend.academy.service.LogoService;
 import com.smwu.backend.auth.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,8 +21,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -32,6 +38,7 @@ import java.util.List;
 public class AcademyController {
 
     private final AcademyService academyService;
+    private final LogoService logoService;
 
     /** 학원 만들기 → 요청자가 원장. 이미 소속이 있으면 409 ALREADY_IN_ACADEMY */
     @PostMapping("/academies")
@@ -55,6 +62,25 @@ public class AcademyController {
     @PatchMapping("/academy")
     public AcademyResponse rename(@Valid @RequestBody AcademyRequest request) {
         return academyService.rename(request.name());
+    }
+
+    /** 🔒 로고 업로드 (PNG/JPG, 2MB 이하, 가로 600px 초과 시 축소). 모든 시험지 머리글에 들어간다 */
+    @PostMapping(value = "/academy/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AcademyResponse uploadLogo(@RequestPart("file") MultipartFile file) {
+        return logoService.upload(file);
+    }
+
+    /** 로고 미리보기 (PNG). 없으면 404 */
+    @GetMapping(value = "/academy/logo", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> logo() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(logoService.currentLogo());
+    }
+
+    /** 🔒 로고 삭제 → 시험지 머리글에 학원명 텍스트 */
+    @DeleteMapping("/academy/logo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteLogo() {
+        logoService.delete();
     }
 
     @GetMapping("/academy/members")

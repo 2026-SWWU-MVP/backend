@@ -21,4 +21,6 @@ public interface PastExamRepository extends JpaRepository<PastExam, Long> {
                         @Param("reason") String reason);
 
     boolean existsByWorkspaceId(Long workspaceId);
+
+    long countByWorkspaceId(Long workspaceId);
 }

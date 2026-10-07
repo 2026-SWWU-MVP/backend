@@ -4,13 +4,18 @@ import com.smwu.backend.common.exception.BusinessException;
 import com.smwu.backend.common.exception.ErrorCode;
 import com.smwu.backend.material.repository.MaterialRepository;
 import com.smwu.backend.pastexam.repository.PastExamRepository;
+import com.smwu.backend.profile.domain.ProfileStatus;
+import com.smwu.backend.profile.domain.SchoolProfile;
 import com.smwu.backend.profile.repository.SchoolProfileRepository;
 import com.smwu.backend.workspace.domain.School;
 import com.smwu.backend.workspace.domain.Workspace;
 import com.smwu.backend.workspace.dto.WorkspaceRequest;
 import com.smwu.backend.workspace.dto.WorkspaceResponse;
+import com.smwu.backend.workspace.dto.WorkspaceResponse.Summary;
+import com.smwu.backend.workspace.dto.WorkspaceResponse.WorksheetRef;
 import com.smwu.backend.workspace.repository.SchoolRepository;
 import com.smwu.backend.workspace.repository.WorkspaceRepository;
+import com.smwu.backend.worksheet.repository.WorksheetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -18,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -34,6 +40,7 @@ public class WorkspaceService {
     private final PastExamRepository pastExamRepository;
     private final MaterialRepository materialRepository;
     private final SchoolProfileRepository profileRepository;
+    private final WorksheetRepository worksheetRepository;
 
     @Transactional
     public WorkspaceResponse create(WorkspaceRequest request) {
@@ -45,7 +52,7 @@ public class WorkspaceService {
         try {
             Workspace saved = workspaceRepository.saveAndFlush(
                     new Workspace(academyId, school.getId(), request.grade(), currentAcademy.userId()));
-            return WorkspaceResponse.of(saved, school);
+            return WorkspaceResponse.of(saved, school, Summary.EMPTY);
         } catch (DataIntegrityViolationException e) {
             // 같은 요청이 동시에 두 번 들어온 경우
             throw new BusinessException(ErrorCode.WORKSPACE_DUPLICATED);
@@ -57,13 +64,13 @@ public class WorkspaceService {
         List<Workspace> workspaces = workspaceRepository.findByAcademyIdOrderByIdAsc(currentAcademy.academyId());
         Map<Long, School> schools = schoolRepository.findAllById(workspaces.stream().map(Workspace::getSchoolId).distinct().toList())
                 .stream().collect(Collectors.toMap(School::getId, Function.identity()));
-        return workspaces.stream().map(w -> WorkspaceResponse.of(w, schools.get(w.getSchoolId()))).toList();
+        return workspaces.stream().map(w -> WorkspaceResponse.of(w, schools.get(w.getSchoolId()), summary(w.getId()))).toList();
     }
 
     @Transactional(readOnly = true)
     public WorkspaceResponse get(Long workspaceId) {
         Workspace workspace = getWorkspace(workspaceId);
-        return WorkspaceResponse.of(workspace, schoolService.getSchool(workspace.getSchoolId()));
+        return WorkspaceResponse.of(workspace, schoolService.getSchool(workspace.getSchoolId()), summary(workspaceId));
     }
 
     /**
@@ -78,6 +85,21 @@ public class WorkspaceService {
             throw new BusinessException(ErrorCode.WORKSPACE_NOT_EMPTY);
         }
         workspaceRepository.delete(workspace);
+    }
+
+    /** 카드 요약: 기출 수, 프로필 상태(확정본 우선), 최근 시험지. 워크스페이스는 학원당 수 개라 카드마다 조회한다 */
+    private Summary summary(Long workspaceId) {
+        long pastExams = pastExamRepository.countByWorkspaceId(workspaceId);
+        Optional<SchoolProfile> confirmed = profileRepository.findByWorkspaceIdAndStatus(workspaceId, ProfileStatus.CONFIRMED)
+                .stream().findFirst();
+        ProfileStatus status = confirmed.map(SchoolProfile::getStatus)
+                .or(() -> profileRepository.findTopByWorkspaceIdOrderByVersionDesc(workspaceId).map(p -> ProfileStatus.DRAFT))
+                .orElse(null);
+        WorksheetRef latest = worksheetRepository.findTopByWorkspaceIdOrderByIdDesc(workspaceId)
+                .map(w -> new WorksheetRef(w.getId(), w.getTitle(), w.getCreatedAt()))
+                .orElse(null);
+        return new Summary(pastExams, status, confirmed.map(SchoolProfile::getId).orElse(null),
+                confirmed.map(SchoolProfile::getVersion).orElse(null), latest);
     }
 
     /** 다른 학원의 워크스페이스는 존재 자체를 알리지 않도록 404 ({@link WorkspaceAccessChecker}) */
