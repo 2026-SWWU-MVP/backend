@@ -17,6 +17,8 @@ import java.util.List;
  * @param validationStatus PASSED / NEEDS_REVIEW(블라인드 풀이 불일치 → 강조 표시) / FAILED(규칙 검증 실패)
  * @param validationIssues 통과하지 못한 검증 항목의 이유. PASSED면 빈 목록
  * @param attempts         생성 시도 횟수 (1~3)
+ * @param reviewStatus     강사 검수 DRAFT / ACCEPTED(채택) / REJECTED(폐기). 시험지에는 ACCEPTED만 넣을 수 있다
+ * @param edited           강사가 내용을 고쳤으면 true
  */
 public record ProblemResponse(
         Long id,
@@ -41,6 +43,8 @@ public record ProblemResponse(
         int attempts,
         ReviewStatus reviewStatus,
         boolean edited,
+        Long reviewedBy,
+        LocalDateTime reviewedAt,
         String llmModel,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -56,6 +60,6 @@ public record ProblemResponse(
                 List.copyOf(p.getConditions()), p.getBody(), List.copyOf(p.getChoices()), p.getAnswer(), p.getAnswerText(),
                 p.getExplanation(), p.getEvidence(), p.getValidationStatus(), issues,
                 p.getValidationReport() == null ? 0 : p.getValidationReport().attempts(),
-                p.getReviewStatus(), p.isEdited(), p.getLlmModel(), p.getCreatedAt(), p.getUpdatedAt());
+                p.getReviewStatus(), p.isEdited(), p.getReviewedBy(), p.getReviewedAt(), p.getLlmModel(), p.getCreatedAt(), p.getUpdatedAt());
     }
 }
