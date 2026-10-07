@@ -4,10 +4,16 @@ import com.smwu.backend.worksheet.dto.WorksheetDtos.CreateWorksheetRequest;
 import com.smwu.backend.worksheet.dto.WorksheetDtos.UpdateWorksheetRequest;
 import com.smwu.backend.worksheet.dto.WorksheetDtos.WorksheetResponse;
 import com.smwu.backend.worksheet.dto.WorksheetDtos.WorksheetSummary;
+import com.smwu.backend.worksheet.pdf.WorksheetPdfService;
+import com.smwu.backend.worksheet.pdf.WorksheetPdfService.PdfFile;
 import com.smwu.backend.worksheet.service.WorksheetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,15 +24,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/** 시험지 구성 (#16). PDF 출력은 #18 */
+/** 시험지 구성 (#16)과 문제지·정답지 PDF (#18) */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class WorksheetController {
 
     private final WorksheetService worksheetService;
+    private final WorksheetPdfService pdfService;
 
     /** 채택한 문항으로 시험지 만들기. 채택 안 된 문항·다른 워크스페이스 문항·중복은 400 */
     @PostMapping("/workspaces/{workspaceId}/worksheets")
@@ -51,6 +59,26 @@ public class WorksheetController {
     @PatchMapping("/worksheets/{worksheetId}")
     public WorksheetResponse update(@PathVariable Long worksheetId, @Valid @RequestBody UpdateWorksheetRequest request) {
         return worksheetService.update(worksheetId, request);
+    }
+
+    /** 문제지 PDF (1단 A4, 머리글·로고 매 페이지) */
+    @GetMapping("/worksheets/{worksheetId}/pdf")
+    public ResponseEntity<byte[]> pdf(@PathVariable Long worksheetId) {
+        return download(pdfService.render(worksheetId, false));
+    }
+
+    /** 정답지 PDF (같은 구성 + 정답·해설) */
+    @GetMapping("/worksheets/{worksheetId}/answer-pdf")
+    public ResponseEntity<byte[]> answerPdf(@PathVariable Long worksheetId) {
+        return download(pdfService.render(worksheetId, true));
+    }
+
+    private static ResponseEntity<byte[]> download(PdfFile file) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(file.filename(), StandardCharsets.UTF_8).build().toString())
+                .body(file.content());
     }
 
     @DeleteMapping("/worksheets/{worksheetId}")

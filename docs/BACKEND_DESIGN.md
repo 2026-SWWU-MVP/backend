@@ -627,6 +627,19 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 - 영문 지문도 나눔명조로 출력해도 무방합니다. 출력예시도 한 가지 명조 계열 폰트를 사용합니다.
 - `①~⑤`, `→` 같은 기호가 폰트에 있는지 **D1에 샘플 PDF로 확인**합니다.
 
+### 구현 결과 (#3, #18)
+
+- 폰트: Google Fonts의 나눔명조·나눔고딕 Regular/Bold 정적 TTF (`resources/fonts/`, `OFL.txt` 포함). 필요한 글자만 PDF에 넣습니다(subset).
+- **확인된 문제:** 이 나눔 폰트에는 원문자(①~⑳, ⓐ~ⓩ, Ⓐ~Ⓩ) 글리프가 없어 `#`으로 찍혔습니다. `→`는 정상입니다.
+  → 원문자는 `RichText`가 숫자·문자만 남기고 템플릿이 **CSS 동그라미**(`.circled`)로 그립니다. 대괄호 표기(`①[표현]`)는 4장 규칙대로 그대로 출력합니다.
+- 템플릿: `templates/worksheet.html` (+ `fragments/rich.html`). 문제지와 정답지가 같은 템플릿이고 `answerSheet`만 다릅니다.
+  - 답안 칸: 요약문 빈칸 `(1) ____ (2) ____`(빈칸 수만큼), 어법 `( ) ____ → ____`(틀린 곳 수만큼), 어구 배열 `→ ____`, 조건 영작 `→ ____` 2줄
+  - 정답지: 답안 칸 대신 `정답`과 `해설`, 머리글 끝에 `(정답)`
+- 머리글: 시험지 머리글(없으면 제목) + 로고(높이 12mm, 가로 최대 45mm로 크기를 계산해 지정, 없으면 학원명, `showLogo=false`면 생략). 쪽 번호는 아래 가운데.
+- `[조건]` 번호는 `ol` 대신 직접 매깁니다 (OpenHTMLtoPDF에서 목록 번호가 페이지 위로 따로 찍혀서).
+- API: `GET /api/worksheets/{id}/pdf`, `GET /api/worksheets/{id}/answer-pdf` (`Content-Disposition: attachment; filename*=UTF-8''시험지제목.pdf` / `시험지제목_정답.pdf`)
+- 테스트가 `build/pdf-samples/`에 샘플 PDF를 남기므로 눈으로 확인할 수 있습니다.
+
 ---
 
 ## 10. API (MVP)
