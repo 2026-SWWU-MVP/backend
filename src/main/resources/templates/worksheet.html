@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <title>시험지</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 28mm 20mm 20mm 20mm;
+            @top-center { content: element(header); }
+            @bottom-center { content: "- " counter(page) " -"; font-family: 'NanumGothic'; font-size: 8.5pt; color: #555; }
+        }
+        body { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7; color: #000; }
+
+        /* 나눔 폰트에 없는 원문자(①, ⓐ)는 동그라미로 그린다 (RichText) */
+        .circled { display: inline-block; border: 0.6pt solid #000; border-radius: 50%; width: 1.25em; height: 1.25em;
+                   line-height: 1.25em; text-align: center; font-size: 0.72em; vertical-align: 0.15em; margin: 0 0.1em; }
+
+        /* 머리글: 매 페이지 반복 (running element) */
+        .header { position: running(header); display: table; width: 100%; border-bottom: 1.2pt solid #000; padding-bottom: 2mm; }
+        .header .title { display: table-cell; vertical-align: bottom; font-family: 'NanumGothic'; font-weight: 700; font-size: 11pt; }
+        .header .brand { display: table-cell; vertical-align: bottom; text-align: right; width: 48mm; }
+        .header .logo { float: right; }
+        .header .academy { font-family: 'NanumGothic'; font-weight: 700; font-size: 10pt; }
+
+        /* 지문 묶음: 지문 하나 + 서술형 문항들 */
+        .section { margin-bottom: 8mm; }
+        .passage { margin-bottom: 4mm; }
+        .passage-title { font-weight: 700; text-align: center; margin-bottom: 1.5mm; }
+        .passage-text { white-space: pre-wrap; text-align: justify; }
+
+        .item { margin-top: 4mm; page-break-inside: avoid; }
+        .stem { font-family: 'NanumGothic'; font-weight: 700; }
+        .stem .no { margin-right: 1.5mm; }
+        .box { border: 0.7pt solid #000; padding: 1.5mm 3mm; margin: 2mm 0; }
+        .box-label { font-family: 'NanumGothic'; font-weight: 700; font-size: 9pt; }
+        .cond { font-size: 9.5pt; }
+        .choices { font-size: 9.5pt; }
+        .body { white-space: pre-wrap; margin: 2mm 0; }
+
+        /* 답안 칸 (문제지) */
+        .answer { margin-top: 2.5mm; }
+        .blank { display: inline-block; margin-right: 8mm; }
+        .line { display: inline-block; border-bottom: 0.6pt solid #000; height: 5mm; vertical-align: bottom; }
+        .row { margin-top: 2.5mm; }
+
+        /* 정답지 */
+        .key { margin-top: 2.5mm; border-left: 2pt solid #000; padding-left: 3mm; }
+        .key-answer { font-family: 'NanumGothic'; font-weight: 700; white-space: pre-wrap; }
+        .key-explanation { font-size: 9pt; color: #333; margin-top: 1mm; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <span class="title"><th:block th:replace="~{fragments/rich :: rich(${sheet.headerTitle})}"></th:block></span>
+    <span class="brand" th:if="${sheet.logo != null or sheet.academyName != null}">
+        <img th:if="${sheet.logo != null}" class="logo" th:src="${sheet.logo.dataUri}" th:style="${sheet.logo.style()}" alt="logo"/>
+        <span th:if="${sheet.logo == null}" class="academy" th:text="${sheet.academyName}">학원명</span>
+    </span>
+</div>
+
+<div class="section" th:each="section : ${sheet.sections}">
+    <div class="passage">
+        <div class="passage-title" th:unless="${section.title.isEmpty()}"><th:block th:replace="~{fragments/rich :: rich(${section.title})}"></th:block></div>
+        <div class="passage-text"><th:block th:replace="~{fragments/rich :: rich(${section.text})}"></th:block></div>
+    </div>
+
+    <div class="item" th:each="item : ${section.items}">
+        <div class="stem"><span class="no" th:text="'[서답형 ' + ${item.no} + ']'">[서답형 1]</span><th:block th:replace="~{fragments/rich :: rich(${item.stem})}"></th:block></div>
+
+        <div class="box" th:if="${!#lists.isEmpty(item.conditions)}">
+            <div class="box-label">[조건]</div>
+            <div class="cond" th:each="condition, stat : ${item.conditions}"><span th:text="${stat.count} + '. '">1. </span><th:block th:replace="~{fragments/rich :: rich(${condition})}"></th:block></div>
+        </div>
+
+        <div class="body" th:unless="${item.body.isEmpty()}"><th:block th:replace="~{fragments/rich :: rich(${item.body})}"></th:block></div>
+
+        <div class="box choices" th:unless="${item.choices.isEmpty()}"><span class="box-label">[보기]</span> <th:block th:replace="~{fragments/rich :: rich(${item.choices})}"></th:block></div>
+
+        <!-- 문제지: 답안 칸 -->
+        <div class="answer" th:unless="${sheet.answerSheet}" th:switch="${item.answer.name()}">
+            <div th:case="'BLANKS'">
+                <span class="blank" th:each="i : ${#numbers.sequence(1, item.answerSlots)}">
+                    <span th:text="'(' + ${i} + ')'">(1)</span> <span class="line" style="width: 35mm;"></span>
+                </span>
+            </div>
+            <div th:case="'CORRECTIONS'">
+                <div class="row" th:each="i : ${#numbers.sequence(1, item.answerSlots)}">
+                    ( <span class="line" style="width: 8mm;"></span> )
+                    <span class="line" style="width: 45mm;"></span> → <span class="line" style="width: 45mm;"></span>
+                </div>
+            </div>
+            <div th:case="*">
+                <div class="row" th:each="i : ${#numbers.sequence(1, item.answerSlots)}">
+                    → <span class="line" style="width: 160mm;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 정답지: 정답과 해설 -->
+        <div class="key" th:if="${sheet.answerSheet}">
+            <div class="key-answer">정답  <th:block th:replace="~{fragments/rich :: rich(${item.answerText})}"></th:block></div>
+            <div class="key-explanation" th:unless="${item.explanation.isEmpty()}">해설  <th:block th:replace="~{fragments/rich :: rich(${item.explanation})}"></th:block></div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

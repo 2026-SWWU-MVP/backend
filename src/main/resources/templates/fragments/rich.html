@@ -1,0 +1,2 @@
+<!-- RichText 출력: 원문자는 CSS 동그라미(.circled)로 그린다. 줄바꿈 유지(pre-wrap) 영역에서 쓰므로 공백이 생기지 않게 한 줄로 둔다 -->
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="rich(t)"><span th:each="seg : ${t.segments}" th:class="${seg.circled} ? 'circled'" th:text="${seg.text}"></span></th:block>
