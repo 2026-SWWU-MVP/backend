@@ -26,6 +26,7 @@ public class GenerationContextFactory {
 
     private final ProfileQueryService profileQueryService;
     private final PastQuestionRepository pastQuestionRepository;
+    private final TeacherPreferences teacherPreferences;
 
     public record ProfileContext(SchoolProfile profile, GenerationContext context) {
     }
@@ -56,7 +57,7 @@ public class GenerationContextFactory {
                 .map(q -> new GenerationContext.Example(q.getType().getLabel(), describe(q)))
                 .toList();
         return new GenerationContext(profile.getId(), profile.getTeacherNotes().stream().map(TeacherNote::text).toList(),
-                teacherRules, pastExamRules, examples);
+                teacherRules, pastExamRules, examples, teacherPreferences.forWorkspace(profile.getWorkspaceId()));
     }
 
     public static String describe(PastQuestion q) {

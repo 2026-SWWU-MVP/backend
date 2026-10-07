@@ -2,9 +2,11 @@ package com.smwu.backend.problem.controller;
 
 import com.smwu.backend.problem.domain.ReviewStatus;
 import com.smwu.backend.problem.dto.ProblemResponse;
+import com.smwu.backend.problem.dto.ReviewStatsResponse;
 import com.smwu.backend.problem.dto.UpdateProblemRequest;
 import com.smwu.backend.problem.service.ProblemGenerationService;
 import com.smwu.backend.problem.service.ProblemReviewService;
+import com.smwu.backend.problem.service.ReviewStatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,6 +31,7 @@ public class ProblemController {
 
     private final ProblemGenerationService generationService;
     private final ProblemReviewService reviewService;
+    private final ReviewStatsService reviewStatsService;
 
     @Operation(summary = "문항 상세")
     @GetMapping("/problems/{problemId}")
@@ -51,6 +54,12 @@ public class ProblemController {
     }
 
     /** 워크스페이스 문항 목록 (최신순). 시험지 구성 화면은 reviewStatus=ACCEPTED */
+    @Operation(summary = "검수 통계 (채택률)", description = "유형별·생성 작업별 채택·폐기·수정 수와 채택률. 생성 작업이 거듭될수록 채택률이 오르는지 본다 (#42)")
+    @GetMapping("/workspaces/{workspaceId}/review-stats")
+    public ReviewStatsResponse reviewStats(@PathVariable Long workspaceId) {
+        return reviewStatsService.stats(workspaceId);
+    }
+
     @Operation(summary = "워크스페이스 문항 목록", description = "워크스페이스 문항 목록 (최신순). 시험지 구성 화면은 reviewStatus=ACCEPTED")
     @GetMapping("/workspaces/{workspaceId}/problems")
     public List<ProblemResponse> list(@PathVariable Long workspaceId, @RequestParam(required = false) ReviewStatus reviewStatus) {

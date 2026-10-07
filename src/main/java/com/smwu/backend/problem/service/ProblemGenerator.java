@@ -178,6 +178,7 @@ public class ProblemGenerator {
                         "teacherInfo", teacherInfo(context),
                         "pastExamRules", bulletList(context.pastExamRules(), "(없음)"),
                         "examples", examples(context),
+                        "teacherReviews", bulletList(context.teacherReviews(handler.type()), "(없음)"),
                         "passage", (passage.title() == null ? "" : passage.title() + "\n") + passage.text(),
                         "typeLabel", handler.type().getLabel(),
                         "typeInstructions", promptLoader.text(handler.promptName()).strip(),

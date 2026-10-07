@@ -10,6 +10,7 @@ import java.util.List;
  *
  * @param answerText   정답지에 찍히는 정답 (정답 구조 answer는 검증용이라 바뀌지 않음)
  * @param reviewStatus ACCEPTED(채택) / REJECTED(폐기) / DRAFT(검수 전으로 되돌리기)
+ * @param rejectReason 폐기 사유 (선택). 다음 생성 때 같은 실수를 피하도록 프롬프트에 들어간다 (#42)
  */
 public record UpdateProblemRequest(
         @Size(max = 1000, message = "발문은 1000자 이하입니다.")
@@ -24,6 +25,8 @@ public record UpdateProblemRequest(
         String answerText,
         @Size(max = 5000, message = "해설은 5000자 이하입니다.")
         String explanation,
-        ReviewStatus reviewStatus
+        ReviewStatus reviewStatus,
+        @Size(max = 300, message = "폐기 사유는 300자 이하입니다.")
+        String rejectReason
 ) {
 }
