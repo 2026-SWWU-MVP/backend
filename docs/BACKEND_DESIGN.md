@@ -577,6 +577,7 @@ v1에서는 검증 상태와 검수 상태가 한 필드에 섞여 있었는데,
 - 로고가 없으면 학원명을 텍스트로 대신 출력합니다.
 - `Worksheet.showLogo = false`로 시험지별로 로고를 끌 수 있습니다.
 - 투명 배경 PNG를 권장합니다. JPG는 흰 배경이 그대로 보입니다.
+- 구현 (#14): `LogoService`. 2MB 초과 400 `FILE_TOO_LARGE`, PNG/JPG가 아니거나 읽을 수 없으면 400 `INVALID_FILE`. 항상 PNG(ARGB)로 저장하고, 바꾸거나 지우면 이전 파일은 커밋 후 삭제합니다. PDF는 `LogoService.logoOf(academyId).dataUri()`를 씁니다.
 
 ```html
 <div class="header">
