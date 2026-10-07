@@ -33,7 +33,7 @@ class GenerationJobTest {
 
     @Test
     void 모두_끝나야_종료되고_전부_오류면_FAILED() {
-        GenerationJob job = GenerationJob.start(1L, 2L, PLAN);
+        GenerationJob job = GenerationJob.start(1L, 2L, PLAN, null);
         ReflectionTestUtils.setField(job, "completed", 5);
         job.finishIfDone();
         assertThat(job.getStatus()).isEqualTo(GenerationJobStatus.RUNNING);
@@ -45,7 +45,7 @@ class GenerationJobTest {
         assertThat(job.getStatus()).isEqualTo(GenerationJobStatus.COMPLETED);
         assertThat(job.getFinishedAt()).isNotNull();
 
-        GenerationJob allFailed = GenerationJob.start(1L, 2L, PLAN);
+        GenerationJob allFailed = GenerationJob.start(1L, 2L, PLAN, null);
         ReflectionTestUtils.setField(allFailed, "completed", 6);
         ReflectionTestUtils.setField(allFailed, "errors", 6);
         allFailed.finishIfDone();

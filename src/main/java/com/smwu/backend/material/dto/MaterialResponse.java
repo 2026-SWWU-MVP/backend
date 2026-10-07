@@ -27,12 +27,14 @@ public record MaterialResponse(
         String failureReason,
         List<String> warnings,
         long passageCount,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Long createdBy,
+        String createdByName
 ) {
 
-    public static MaterialResponse of(Material m, long passageCount) {
+    public static MaterialResponse of(Material m, long passageCount, String createdByName) {
         return new MaterialResponse(m.getId(), m.getWorkspaceId(), m.getTitle(), m.getSourceType(), m.getOriginalFilename(),
                 m.getPageCount(), m.getSourceType() == MaterialSourceType.PDF && !m.isTextLayer(), m.getStatus(),
-                m.getFailureReason(), List.copyOf(m.getWarnings()), passageCount, m.getCreatedAt());
+                m.getFailureReason(), List.copyOf(m.getWarnings()), passageCount, m.getCreatedAt(), m.getCreatedBy(), createdByName);
     }
 }

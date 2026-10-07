@@ -28,13 +28,15 @@ public record PastExamResponse(
         long objectiveCount,
         long subjectiveCount,
         LocalDateTime createdAt,
-        LocalDateTime extractedAt
+        LocalDateTime extractedAt,
+        Long createdBy,
+        String createdByName
 ) {
 
-    public static PastExamResponse of(PastExam exam, long objectiveCount, long subjectiveCount) {
+    public static PastExamResponse of(PastExam exam, long objectiveCount, long subjectiveCount, String createdByName) {
         return new PastExamResponse(exam.getId(), exam.getWorkspaceId(), exam.getExamYear(), exam.getSemester(),
                 exam.getExamType(), exam.getOriginalFilename(), exam.getPageCount(), !exam.isTextLayer(),
                 exam.getStatus(), exam.getFailureReason(), objectiveCount, subjectiveCount,
-                exam.getCreatedAt(), exam.getExtractedAt());
+                exam.getCreatedAt(), exam.getExtractedAt(), exam.getCreatedBy(), createdByName);
     }
 }

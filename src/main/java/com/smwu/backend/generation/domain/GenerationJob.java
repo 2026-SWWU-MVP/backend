@@ -61,11 +61,12 @@ public class GenerationJob extends BaseTimeEntity {
 
     private LocalDateTime finishedAt;
 
-    /** TODO(#6): 로그인 사용자 ID */
+    /** 생성을 요청한 사용자 */
     private Long createdBy;
 
-    public static GenerationJob start(Long workspaceId, Long profileId, GenerationPlan plan) {
+    public static GenerationJob start(Long workspaceId, Long profileId, GenerationPlan plan, Long createdBy) {
         GenerationJob job = new GenerationJob();
+        job.createdBy = createdBy;
         job.workspaceId = workspaceId;
         job.profileId = profileId;
         job.plan = plan;

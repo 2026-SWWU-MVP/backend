@@ -85,7 +85,7 @@ public class SchoolProfile extends BaseTimeEntity {
     /** 규칙 요약에 쓴 모델 (LLM을 호출하지 않았으면 null) */
     private String llmModel;
 
-    /** TODO(#6): 로그인 사용자 ID */
+    /** 이 버전을 만든 사용자 (분석·재검토·의견 반영·직접 수정을 요청한 사람) */
     private Long createdBy;
 
     private Long confirmedBy;

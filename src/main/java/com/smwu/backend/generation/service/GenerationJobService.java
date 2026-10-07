@@ -20,6 +20,8 @@ import com.smwu.backend.problem.service.GenerationContextFactory.ProfileContext;
 import com.smwu.backend.problem.service.ProblemGenerator;
 import com.smwu.backend.problem.type.PassageSource;
 import com.smwu.backend.workspace.service.WorkspaceAccessChecker;
+import com.smwu.backend.auth.web.CurrentUserContext;
+import com.smwu.backend.user.service.UserNames;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,7 @@ public class GenerationJobService {
     private final PassageService passageService;
     private final WorkspaceAccessChecker accessChecker;
     private final GenerationSlotRunner slotRunner;
+    private final UserNames userNames;
 
     public GenerationJobResponse create(Long workspaceId, CreateGenerationJobRequest request) {
         accessChecker.check(workspaceId);
@@ -78,14 +81,14 @@ public class GenerationJobService {
                     "한 번에 " + MAX_PROBLEMS + "문항까지 만들 수 있습니다. (요청 " + plan.total() + "문항)");
         }
 
-        GenerationJob job = jobRepository.save(GenerationJob.start(workspaceId, profileContext.profile().getId(), plan));
+        GenerationJob job = jobRepository.save(GenerationJob.start(workspaceId, profileContext.profile().getId(), plan, CurrentUserContext.userIdOrNull()));
         // 같은 지문·같은 유형은 한 묶음으로 차례로 만들어 문항끼리 겹치지 않게 한다
         Map<String, List<Slot>> groups = new LinkedHashMap<>();
         plan.slots().forEach(slot -> groups.computeIfAbsent(slot.passageId() + ":" + slot.type(), k -> new ArrayList<>()).add(slot));
         groups.values().forEach(group ->
                 slotRunner.run(job.getId(), group, profileContext, passages.get(group.get(0).passageId())));
         log.info("문제 생성 작업 {} 시작: 지문 {}개, {}문항", job.getId(), plan.passageIds().size(), plan.total());
-        return GenerationJobResponse.of(job, 0, 0, 0);
+        return GenerationJobResponse.of(job, 0, 0, 0, userNames.name(job.getCreatedBy()));
     }
 
     public GenerationJobResponse get(Long jobId) {
@@ -114,7 +117,8 @@ public class GenerationJobService {
         problemRepository.countByValidationStatus(job.getId())
                 .forEach(row -> counts.put((ValidationStatus) row[0], (Long) row[1]));
         return GenerationJobResponse.of(job, counts.getOrDefault(ValidationStatus.PASSED, 0L),
-                counts.getOrDefault(ValidationStatus.NEEDS_REVIEW, 0L), counts.getOrDefault(ValidationStatus.FAILED, 0L));
+                counts.getOrDefault(ValidationStatus.NEEDS_REVIEW, 0L), counts.getOrDefault(ValidationStatus.FAILED, 0L),
+                userNames.name(job.getCreatedBy()));
     }
 
     /** 요청에 유형 구성이 없으면 프로필의 지문당 유형 구성을 쓴다 */

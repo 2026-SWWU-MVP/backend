@@ -17,6 +17,7 @@ import com.smwu.backend.profile.dto.ProfileResponse;
 import com.smwu.backend.profile.repository.SchoolProfileRepository;
 import com.smwu.backend.profile.service.ProfileDiff.Snapshot;
 import com.smwu.backend.profile.service.ProfileSourceLoader.Source;
+import com.smwu.backend.auth.web.CurrentUserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -65,7 +66,7 @@ public class ProfileRevisionService {
             }
             profileRepository.findByWorkspaceIdAndStatus(profile.getWorkspaceId(), ProfileStatus.CONFIRMED)
                     .forEach(SchoolProfile::supersede);
-            profile.confirm(null); // TODO(#6): 로그인 사용자 ID
+            profile.confirm(CurrentUserContext.userIdOrNull());
         });
         return queryService.get(profileId);
     }
@@ -100,7 +101,7 @@ public class ProfileRevisionService {
         FeedbackApplier.Result result = feedbackApplier.apply(base, note);
 
         List<TeacherNote> notes = new ArrayList<>(base.getTeacherNotes());
-        notes.add(new TeacherNote(note, Boolean.TRUE.equals(request.persistent()), null)); // TODO(#6): 작성자
+        notes.add(new TeacherNote(note, Boolean.TRUE.equals(request.persistent()), CurrentUserContext.userIdOrNull()));
         int noteIndex = notes.size() - 1;
 
         List<ProfileRule> rules = new ArrayList<>();
@@ -177,7 +178,7 @@ public class ProfileRevisionService {
             summary.add("v" + base.getVersion() + "에서 " + originLabel(origin) + "로 만든 버전입니다.");
             summary.addAll(changes);
             return profileRepository.save(base.revise(nextVersion, origin, rules, typeMix, notes, examples, summary,
-                    llmModel, null)); // TODO(#6): 로그인 사용자 ID
+                    llmModel, CurrentUserContext.userIdOrNull()));
         });
         log.info("출제 프로필 {} workspaceId={} v{} → v{}", origin, base.getWorkspaceId(), base.getVersion(), saved.getVersion());
         return queryService.get(saved.getId());

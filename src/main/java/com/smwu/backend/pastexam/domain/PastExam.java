@@ -36,7 +36,6 @@ public class PastExam extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** TODO(#9): Workspace 엔티티가 생기면 연관관계 대신 ID로 계속 참조해도 된다 */
     @Column(nullable = false)
     private Long workspaceId;
 
@@ -90,7 +89,7 @@ public class PastExam extends BaseTimeEntity {
     @JdbcTypeCode(SqlTypes.LONG32VARCHAR)
     private String rawResponse;
 
-    /** TODO(#6): 로그인 사용자 ID. 로그인 기능 전까지는 null */
+    /** 올린 사용자 (로그인 기능 이전 데이터는 null) */
     private Long createdBy;
 
     @Builder
