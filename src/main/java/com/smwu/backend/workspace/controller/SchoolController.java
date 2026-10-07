@@ -3,6 +3,8 @@ package com.smwu.backend.workspace.controller;
 import com.smwu.backend.workspace.dto.SchoolRequest;
 import com.smwu.backend.workspace.dto.SchoolResponse;
 import com.smwu.backend.workspace.service.SchoolService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /** 공용 학교 목록. 워크스페이스를 만들 때 검색하고, 없으면 등록한다 */
+@Tag(name = "03. 학교·워크스페이스", description = "공용 학교 목록과 학원의 워크스페이스(학교 + 학년)")
 @RestController
 @RequestMapping("/api/schools")
 @RequiredArgsConstructor
@@ -25,12 +28,14 @@ public class SchoolController {
     private final SchoolService schoolService;
 
     /** 이름·별칭 부분 일치 (예: "건대부고", "압구정"), 최대 20개 */
+    @Operation(summary = "학교 검색", description = "이름·별칭 부분 일치 (예: \"건대부고\", \"압구정\"), 최대 20개")
     @GetMapping
     public List<SchoolResponse> search(@RequestParam("query") String query) {
         return schoolService.search(query);
     }
 
     /** 이름이나 별칭이 이미 있으면 409 SCHOOL_DUPLICATED */
+    @Operation(summary = "학교 등록", description = "이름이나 별칭이 이미 있으면 409 SCHOOL_DUPLICATED")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SchoolResponse register(@Valid @RequestBody SchoolRequest request) {

@@ -8,6 +8,8 @@ import com.smwu.backend.academy.dto.AcademyDtos.MemberResponse;
 import com.smwu.backend.academy.service.AcademyService;
 import com.smwu.backend.academy.service.LogoService;
 import com.smwu.backend.auth.dto.UserResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -32,6 +34,7 @@ import java.util.List;
  * 학원과 강사 (설계서 3.2~3.5). 원장 전용(🔒)을 강사가 부르면 403 OWNER_ONLY.
  * 학원 만들기·합류 응답은 갱신된 내 정보(role, academyId)다.
  */
+@Tag(name = "02. 학원·강사", description = "학원 만들기, 초대 코드, 강사 관리, 로고. 🔒는 원장 전용")
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -41,6 +44,7 @@ public class AcademyController {
     private final LogoService logoService;
 
     /** 학원 만들기 → 요청자가 원장. 이미 소속이 있으면 409 ALREADY_IN_ACADEMY */
+    @Operation(summary = "학원 만들기 (원장이 됨)", description = "학원 만들기 → 요청자가 원장. 이미 소속이 있으면 409 ALREADY_IN_ACADEMY")
     @PostMapping("/academies")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse create(@Valid @RequestBody AcademyRequest request) {
@@ -48,47 +52,55 @@ public class AcademyController {
     }
 
     /** 초대 코드로 합류 → 강사. 만료·사용됨·취소 코드 409 INVITE_CODE_INVALID, 강사 수 초과 409 PLAN_LIMIT_EXCEEDED */
+    @Operation(summary = "초대 코드로 합류 (강사가 됨)", description = "초대 코드로 합류 → 강사. 만료·사용됨·취소 코드 409 INVITE_CODE_INVALID, 강사 수 초과 409 PLAN_LIMIT_EXCEEDED")
     @PostMapping("/academies/join")
     public UserResponse join(@Valid @RequestBody JoinRequest request) {
         return academyService.join(request.code());
     }
 
+    @Operation(summary = "내 학원 정보")
     @GetMapping("/academy")
     public AcademyResponse get() {
         return academyService.get();
     }
 
     /** 🔒 학원 이름 수정 */
+    @Operation(summary = "🔒 학원 이름 수정", description = "🔒 학원 이름 수정")
     @PatchMapping("/academy")
     public AcademyResponse rename(@Valid @RequestBody AcademyRequest request) {
         return academyService.rename(request.name());
     }
 
     /** 🔒 로고 업로드 (PNG/JPG, 2MB 이하, 가로 600px 초과 시 축소). 모든 시험지 머리글에 들어간다 */
+    @Operation(summary = "🔒 로고 업로드", description = "🔒 로고 업로드 (PNG/JPG, 2MB 이하, 가로 600px 초과 시 축소). 모든 시험지 머리글에 들어간다")
     @PostMapping(value = "/academy/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public AcademyResponse uploadLogo(@RequestPart("file") MultipartFile file) {
         return logoService.upload(file);
     }
 
     /** 로고 미리보기 (PNG). 없으면 404 */
+    @Operation(summary = "로고 미리보기", description = "로고 미리보기 (PNG). 없으면 404")
     @GetMapping(value = "/academy/logo", produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> logo() {
         return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(logoService.currentLogo());
     }
 
     /** 🔒 로고 삭제 → 시험지 머리글에 학원명 텍스트 */
+    @Operation(summary = "🔒 로고 삭제", description = "🔒 로고 삭제 → 시험지 머리글에 학원명 텍스트")
     @DeleteMapping("/academy/logo")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteLogo() {
         logoService.delete();
     }
 
+    @Operation(summary = "학원 구성원 목록")
     @GetMapping("/academy/members")
     public List<MemberResponse> members() {
         return academyService.members();
     }
 
     /** 🔒 강사 내보내기 (원장 자신은 불가) */
+    @Operation(summary = "🔒 강사 내보내기", description = "🔒 강사 내보내기 (원장 자신은 불가)")
     @DeleteMapping("/academy/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeMember(@PathVariable Long userId) {
@@ -96,6 +108,7 @@ public class AcademyController {
     }
 
     /** 🔒 초대 코드 발급 → { code, expiresAt } */
+    @Operation(summary = "🔒 초대 코드 발급", description = "🔒 초대 코드 발급 → { code, expiresAt }")
     @PostMapping("/academy/invites")
     @ResponseStatus(HttpStatus.CREATED)
     public InviteResponse issueInvite() {
@@ -103,12 +116,14 @@ public class AcademyController {
     }
 
     /** 🔒 발급한 코드 목록 (사용 여부 포함) */
+    @Operation(summary = "🔒 초대 코드 목록", description = "🔒 발급한 코드 목록 (사용 여부 포함)")
     @GetMapping("/academy/invites")
     public List<InviteResponse> invites() {
         return academyService.invites();
     }
 
     /** 🔒 사용 전 코드 취소 */
+    @Operation(summary = "🔒 초대 코드 취소", description = "🔒 사용 전 코드 취소")
     @DeleteMapping("/academy/invites/{inviteId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelInvite(@PathVariable Long inviteId) {

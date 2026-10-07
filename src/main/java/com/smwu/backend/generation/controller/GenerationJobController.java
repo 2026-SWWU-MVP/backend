@@ -4,6 +4,8 @@ import com.smwu.backend.generation.dto.CreateGenerationJobRequest;
 import com.smwu.backend.generation.dto.GenerationJobResponse;
 import com.smwu.backend.generation.service.GenerationJobService;
 import com.smwu.backend.problem.dto.ProblemResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +27,7 @@ import java.util.List;
  *   <li>status가 COMPLETED 또는 FAILED가 되면 GET /api/generation-jobs/{id}/problems 로 문항 조회</li>
  * </ol>
  */
+@Tag(name = "08. 문제 생성", description = "확정 프로필 + 지문으로 서술형 문항 생성 (비동기, 진행률 폴링)")
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -32,23 +35,27 @@ public class GenerationJobController {
 
     private final GenerationJobService jobService;
 
+    @Operation(summary = "문제 생성 작업 시작")
     @PostMapping("/workspaces/{workspaceId}/generation-jobs")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public GenerationJobResponse create(@PathVariable Long workspaceId, @Valid @RequestBody CreateGenerationJobRequest request) {
         return jobService.create(workspaceId, request);
     }
 
+    @Operation(summary = "생성 작업 목록")
     @GetMapping("/workspaces/{workspaceId}/generation-jobs")
     public List<GenerationJobResponse> list(@PathVariable Long workspaceId) {
         return jobService.list(workspaceId);
     }
 
+    @Operation(summary = "생성 작업 진행률")
     @GetMapping("/generation-jobs/{jobId}")
     public GenerationJobResponse get(@PathVariable Long jobId) {
         return jobService.get(jobId);
     }
 
     /** 생성된 문항 (지문 순서 → 유형 순서). 진행 중에도 끝난 문항까지 조회할 수 있다 */
+    @Operation(summary = "생성된 문항", description = "생성된 문항 (지문 순서 → 유형 순서). 진행 중에도 끝난 문항까지 조회할 수 있다")
     @GetMapping("/generation-jobs/{jobId}/problems")
     public List<ProblemResponse> problems(@PathVariable Long jobId) {
         return jobService.problems(jobId);
