@@ -113,7 +113,9 @@ Swagger에서는 오른쪽 위 **Authorize**에 userId를 넣으면 모든 요�
 ### 검수 → 시험지 → PDF
 
 1. 문항 카드: `validationStatus` (`PASSED` / `NEEDS_REVIEW` 강조 표시 / `FAILED`), 실패·확인 이유는 `validationIssues`
-2. 수정·채택·폐기: `PATCH /api/problems/{id}` `{ stem?, conditions?, body?, choices?, answerText?, explanation?, reviewStatus? }` (보낸 항목만 바뀜)
+2. 수정·채택·폐기: `PATCH /api/problems/{id}` `{ stem?, conditions?, body?, choices?, answerText?, explanation?, reviewStatus?, rejectReason? }` (보낸 항목만 바뀜)
+   - 폐기할 때 사유(`rejectReason`)를 받아 두면 다음 생성에서 같은 문제를 피합니다. 수정한 내용도 다음 생성에 반영됩니다 ("쓸수록 맞춤")
+   - 채택률: `GET /api/workspaces/{id}/review-stats` (유형별·생성 작업별 채택·폐기·수정 수와 `acceptanceRate`)
 3. 다시 생성: `POST /api/problems/{id}/regenerate` (수 초~수십 초, 검수 상태 초기화)
 4. 시험지 구성: `GET /api/workspaces/{id}/problems?reviewStatus=ACCEPTED` → `POST /api/workspaces/{id}/worksheets` `{ title, headerText, showLogo, problemIds }`
    - 채택한 문항만 넣을 수 있고, 같은 지문 문항은 자동으로 모여 지문마다 번호가 1부터 매겨집니다 (`sections[].items[].no`)
