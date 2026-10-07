@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SchoolSeeder {
 
+    public static final int ORDER = 0;
+
     private final SchoolRepository schoolRepository;
     private final ObjectMapper objectMapper;
 
+    /** 데모 데이터(DemoDataSeeder)보다 먼저: 학교가 하나라도 있으면 건너뛰므로 순서가 중요하다 */
     @EventListener(ApplicationReadyEvent.class)
+    @Order(ORDER)
     @Transactional
     public void seed() throws IOException {
         if (schoolRepository.count() > 0) {

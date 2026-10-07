@@ -23,6 +23,7 @@ Java 17 · Spring Boot 4.1 · Spring Data JPA · PostgreSQL · Thymeleaf · Open
 3. Swagger UI: http://localhost:8080/swagger-ui/index.html
 
 프론트 연동 방법(Mock 실행, 인증, 화면별 API 순서, 폴링, 오류 처리)은 [docs/FRONTEND_GUIDE.md](docs/FRONTEND_GUIDE.md)를 보세요.
+시연용 데모 데이터(학원·원장·강사 2명·워크스페이스 2개)와 시연 순서는 [docs/DEMO.md](docs/DEMO.md)를 보세요 (`SPRING_PROFILES_ACTIVE=h2,demo`).
 
 ### PostgreSQL 없이 실행 (H2, 임시)
 
