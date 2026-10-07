@@ -372,6 +372,8 @@ Academy ─< User (OWNER / TEACHER)
 | `Worksheet` | id, workspaceId, title, headerText, showLogo, createdBy, createdAt | 시험지 설정 (1단 고정) |
 | `WorksheetItem` | worksheetId, problemId, orderNo | 시험지 내 문항 순서 |
 
+시험지 규칙 (#16): **채택(ACCEPTED)한 문항만** 넣을 수 있고(최대 50문항), 같은 지문의 문항은 지문이 처음 나온 위치로 모아 **지문마다 번호를 1부터** 매깁니다 (출력예시: 지문 하나 + 서술형 2~3문항). 지문 본문은 문항을 만들 때의 사본이라, 원래 지문을 고치거나 지워도 시험지는 그대로입니다.
+
 `createdBy`는 모두 `User.id`이고, 화면에는 이름으로 표시합니다.
 
 ### SchoolProfile
@@ -714,10 +716,14 @@ body   { font-family: 'NanumMyeongjo', serif; font-size: 10pt; line-height: 1.7;
 | GET | `/api/workspaces/{id}/generation-jobs` | 생성 작업 목록 (최신순) |
 | GET | `/api/generation-jobs/{id}` | 진행률 조회 (프론트에서 2초 간격 폴링) |
 | GET | `/api/generation-jobs/{id}/problems` | 생성 문항 목록 |
-| PATCH | `/api/problems/{id}` | 수정 / 채택 / 폐기 |
+| PATCH | `/api/problems/{id}` | 수정 / 채택 / 폐기 `{ stem, conditions, body, choices, answerText, explanation, reviewStatus }` (보낸 항목만, 내용을 고치면 `edited`, 검수자 `reviewedBy` 기록) |
+| GET | `/api/workspaces/{id}/problems?reviewStatus=ACCEPTED` | 워크스페이스 문항 목록 (시험지 구성 화면) |
 | POST | `/api/problems/{id}/regenerate` | 개별 재생성 |
 | POST | `/api/workspaces/{id}/worksheets` | 시험지 생성 (문항 순서, 머리글, 로고 표시 여부) |
 | GET | `/api/workspaces/{id}/worksheets` | 시험지 목록 (작성자 포함, 학원 내 공유) |
+| GET | `/api/worksheets/{id}` | 시험지 본문 (지문 단위 묶음 + 문항, 미리보기) |
+| PATCH | `/api/worksheets/{id}` | 제목·머리글·로고 표시·문항 구성 수정 |
+| DELETE | `/api/worksheets/{id}` | 시험지 삭제 |
 | GET | `/api/worksheets/{id}/pdf` | 문제지 PDF |
 | GET | `/api/worksheets/{id}/answer-pdf` | 정답지 PDF |
 

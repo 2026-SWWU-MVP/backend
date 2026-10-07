@@ -64,6 +64,7 @@ class DataIsolationApiTest {
     private long passageId;
     private long jobId;
     private long problemId;
+    private long worksheetId;
 
     @BeforeEach
     void A학원_데이터를_만든다() throws Exception {
@@ -97,6 +98,11 @@ class DataIsolationApiTest {
         waitFor("/api/generation-jobs/" + jobId, "COMPLETED");
         problemId = ((Number) JsonPath.read(mockMvc.perform(get("/api/generation-jobs/{id}/problems", jobId))
                 .andReturn().getResponse().getContentAsString(), "$[0].id")).longValue();
+        mockMvc.perform(patch("/api/problems/{id}", problemId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reviewStatus\": \"ACCEPTED\"}")).andExpect(status().isOk());
+        worksheetId = id(mockMvc.perform(post("/api/workspaces/{id}/worksheets", workspaceId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\": \"시험지\", \"problemIds\": [" + problemId + "]}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
     }
 
     @Test
@@ -231,6 +237,18 @@ class DataIsolationApiTest {
         r.put("생성 문항 목록", get("/api/generation-jobs/{id}/problems", jobId));
         r.put("문항 상세", get("/api/problems/{id}", problemId));
         r.put("문항 재생성", post("/api/problems/{id}/regenerate", problemId));
+        r.put("문항 검수", patch("/api/problems/{id}", problemId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reviewStatus\": \"REJECTED\"}"));
+        r.put("워크스페이스 문항 목록", get("/api/workspaces/{id}/problems", workspaceId));
+        r.put("시험지 만들기", post("/api/workspaces/{id}/worksheets", workspaceId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\": \"x\", \"problemIds\": [" + problemId + "]}"));
+        r.put("내 워크스페이스에 남의 문항으로 시험지", post("/api/workspaces/{id}/worksheets", otherWorkspace)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\": \"x\", \"problemIds\": [" + problemId + "]}"));
+        r.put("시험지 목록", get("/api/workspaces/{id}/worksheets", workspaceId));
+        r.put("시험지 상세", get("/api/worksheets/{id}", worksheetId));
+        r.put("시험지 수정", patch("/api/worksheets/{id}", worksheetId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\": \"x\"}"));
+        r.put("시험지 삭제", delete("/api/worksheets/{id}", worksheetId));
         return r;
     }
 

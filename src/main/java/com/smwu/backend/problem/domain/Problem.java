@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,8 +110,10 @@ public class Problem extends BaseTimeEntity {
 
     private boolean edited;
 
-    /** TODO(#6): 검수한 사용자 */
+    /** 마지막으로 채택·폐기·수정한 사용자 */
     private Long reviewedBy;
+
+    private LocalDateTime reviewedAt;
 
     private String llmModel;
 
@@ -143,7 +146,57 @@ public class Problem extends BaseTimeEntity {
         this.evidence = null;
         this.edited = false;
         this.reviewedBy = null;
+        this.reviewedAt = null;
         applyGenerated(assembled, validationStatus, report, llmModel);
+    }
+
+    /**
+     * 강사 수정 (#16). null인 항목은 그대로 둔다. 실제로 바뀐 항목이 있으면 edited.
+     * 정답 구조(answer)는 검증용이라 그대로 두고, 정답지에 찍히는 answerText를 고친다.
+     */
+    public boolean edit(String stem, List<String> conditions, String body, List<String> choices, String answerText,
+                        String explanation, Long userId) {
+        boolean changed = false;
+        if (stem != null && !stem.equals(this.stem)) {
+            this.stem = stem;
+            changed = true;
+        }
+        if (conditions != null && !conditions.equals(this.conditions)) {
+            this.conditions = new ArrayList<>(conditions);
+            changed = true;
+        }
+        if (body != null && !body.equals(this.body)) {
+            this.body = body.isBlank() ? null : body;
+            changed = true;
+        }
+        if (choices != null && !choices.equals(this.choices)) {
+            this.choices = new ArrayList<>(choices);
+            changed = true;
+        }
+        if (answerText != null && !answerText.equals(this.answerText)) {
+            this.answerText = answerText;
+            changed = true;
+        }
+        if (explanation != null && !explanation.equals(this.explanation)) {
+            this.explanation = explanation;
+            changed = true;
+        }
+        if (changed) {
+            this.edited = true;
+            markReviewed(userId);
+        }
+        return changed;
+    }
+
+    /** 채택(ACCEPTED) / 폐기(REJECTED) / 검수 전(DRAFT)으로 되돌리기 */
+    public void review(ReviewStatus status, Long userId) {
+        this.reviewStatus = status;
+        markReviewed(userId);
+    }
+
+    private void markReviewed(Long userId) {
+        this.reviewedBy = userId;
+        this.reviewedAt = LocalDateTime.now();
     }
 
     /** 생성 작업의 몇 번째 문항인지 기록 */
