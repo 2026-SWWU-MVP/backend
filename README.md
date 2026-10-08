@@ -1,5 +1,7 @@
 # 내신 영어 AI 시험 제작 서비스 - Backend
 
+[![CI](https://github.com/2026-SWWU-MVP/backend/actions/workflows/ci.yml/badge.svg)](https://github.com/2026-SWWU-MVP/backend/actions/workflows/ci.yml)
+
 2026 SW MVP 경진대회 백엔드 레포지토리입니다. 설계는 [docs/BACKEND_DESIGN.md](docs/BACKEND_DESIGN.md)를 참고하세요.
 
 ## 기술 스택
@@ -69,6 +71,20 @@ IntelliJ에서는 실행 설정의 Active profiles에 `h2`를 넣습니다. 데�
 ```
 
 기출 PDF 추출 실험은 [experiments/README.md](experiments/README.md)를 참고하세요.
+
+## CI / Docker
+
+PR과 `main` push마다 GitHub Actions([.github/workflows/ci.yml](.github/workflows/ci.yml))가 `./gradlew build`를 실행하고 Docker 이미지를 빌드합니다. `main`에 머지되면 이미지가 GHCR에 올라갑니다 (`latest`, 커밋 SHA 태그).
+
+```bash
+docker run -p 8080:8080 \
+  -e DB_URL=jdbc:postgresql://<호스트>:5432/swmvp -e DB_USERNAME=... -e DB_PASSWORD=... \
+  -e CORS_ALLOWED_ORIGINS=https://<프론트 주소> \
+  -v swmvp-storage:/app/storage \
+  ghcr.io/2026-swwu-mvp/backend:latest
+```
+
+업로드 파일은 컨테이너의 `/app/storage`에 저장되므로 볼륨(`-v`)을 연결해야 재시작해도 남습니다. 실제 LLM을 쓰려면 `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`도 넘깁니다.
 
 ## 패키지 구조
 
