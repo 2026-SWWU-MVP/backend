@@ -38,6 +38,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -46,6 +47,12 @@ import java.util.List;
  *   <li>학원 "파인로드영어" (로고 포함), 원장 demo, 강사 teacher1·teacher2 — 비밀번호는 모두 {@link #PASSWORD}</li>
  *   <li>워크스페이스 건대부고 1학년, 압구정고 1학년</li>
  *   <li>건대부고 1학년 시험범위 텍스트 "교과서 2과" (지문 2개)</li>
+ * </ul>
+ * 화면 개발·시연용 더미 데이터 (#62, {@link DemoSampleData})
+ * <ul>
+ *   <li>압구정고 1학년: 기출 3회분 → 프로필 v2 확정 → 생성·검수 → 시험지까지 끝난 상태 (시험범위 "교과서 2과" 포함)</li>
+ *   <li>현대고 2학년: 기출 1회분 + 프로필 v1 초안</li>
+ *   <li>다른 학원 "한빛영어학원"(원장 hanbit): 압구정고 1학년 기출 1회분 → 학교 DB가 학원 2곳 기준이 된다</li>
  * </ul>
  * 기출 PDF는 저작권 때문에 저장소에 넣지 않으므로 시연 3단계에서 직접 올린다. 시연 순서는 docs/DEMO.md.
  */
@@ -58,11 +65,13 @@ public class DemoDataSeeder {
     public static final String OWNER_LOGIN_ID = "demo";
     public static final String PASSWORD = "1234";
     static final String ACADEMY_NAME = "파인로드영어";
+    static final String OTHER_OWNER_LOGIN_ID = "hanbit";
+    static final String OTHER_ACADEMY_NAME = "한빛영어학원";
 
     /** Mock LLM 응답과 맞는 지문이라 LLM 비용 없이도 문제 생성이 PASSED로 나온다 */
     static final String PASSAGES = """
             # Bringing New Life to Old Cities
-            As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. When this happens, a collaboration between the local government and citizens is an effective way to revitalize the area.
+            As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. When this happens, a collaboration between the local government and citizens is an effective way to revitalize the area. Let's take a look at two projects in the Netherlands to find out what successful urban revitalization looks like.
             ---
             # Crime and Budget
             For years, the neighborhood was known for its high crime rates. However, having a limited budget, the government was unable to do so and had to come up with a new plan.
@@ -74,6 +83,7 @@ public class DemoDataSeeder {
     private final WorkspaceRepository workspaceRepository;
     private final MaterialRepository materialRepository;
     private final PassageRepository passageRepository;
+    private final DemoSampleData sampleData;
     private final FileStorage fileStorage;
     private final PasswordEncoder passwordEncoder;
 
@@ -90,22 +100,38 @@ public class DemoDataSeeder {
         academy.changeLogo(fileStorage.save("logos/" + academy.getId(), "png", logo), LOGO_WIDTH, LOGO_HEIGHT);
 
         User owner = user(OWNER_LOGIN_ID, "김원장", academy, UserRole.OWNER);
-        user("teacher1", "이강사", academy, UserRole.TEACHER);
+        User teacher1 = user("teacher1", "이강사", academy, UserRole.TEACHER);
         user("teacher2", "박강사", academy, UserRole.TEACHER);
 
         School konkuk = school("건국대학교사범대학부속고등학교", "서울 광진구", List.of("건대부고", "건국대부고"));
         School apgujeong = school("압구정고등학교", "서울 강남구", List.of("압구정고"));
+        School hyundai = school("현대고등학교", "서울 강남구", List.of("현대고"));
         Workspace main = workspaceRepository.save(new Workspace(academy.getId(), konkuk.getId(), 1, owner.getId()));
-        workspaceRepository.save(new Workspace(academy.getId(), apgujeong.getId(), 1, owner.getId()));
+        Workspace completed = workspaceRepository.save(new Workspace(academy.getId(), apgujeong.getId(), 1, owner.getId()));
+        Workspace inReview = workspaceRepository.save(new Workspace(academy.getId(), hyundai.getId(), 2, owner.getId()));
 
-        Material material = materialRepository.save(Material.text(main.getId(), "교과서 2과", owner.getId()));
+        textbook(main, owner);
+        List<Passage> textbook = textbook(completed, owner);
+
+        Academy other = academyRepository.save(new Academy(OTHER_ACADEMY_NAME, AcademyPlan.BASIC));
+        User otherOwner = user(OTHER_OWNER_LOGIN_ID, "최원장", other, UserRole.OWNER);
+        sampleData.otherAcademy(workspaceRepository.save(new Workspace(other.getId(), apgujeong.getId(), 1, otherOwner.getId())),
+                otherOwner);
+        sampleData.completed(completed, owner, teacher1, textbook);
+        sampleData.inReview(inReview, teacher1);
+        log.info("데모 데이터 생성: 학원 {}, 원장 {} / 강사 teacher1, teacher2 (비밀번호 {}), 워크스페이스 3개 (더미 데이터: 압구정고 1학년 완료, 현대고 2학년 검토 중)", ACADEMY_NAME,
+                OWNER_LOGIN_ID, PASSWORD);
+    }
+
+    private List<Passage> textbook(Workspace workspace, User owner) {
+        Material material = materialRepository.save(Material.text(workspace.getId(), "교과서 2과", owner.getId()));
         List<SplitPassage> split = PassageSplitter.splitText(PASSAGES);
+        List<Passage> passages = new ArrayList<>();
         for (int i = 0; i < split.size(); i++) {
             SplitPassage p = split.get(i);
-            passageRepository.save(new Passage(material.getId(), main.getId(), i + 1, p.title(), p.sourceLabel(), p.text()));
+            passages.add(passageRepository.save(new Passage(material.getId(), workspace.getId(), i + 1, p.title(), p.sourceLabel(), p.text())));
         }
-        log.info("데모 데이터 생성: 학원 {}, 원장 {} / 강사 teacher1, teacher2 (비밀번호 {}), 워크스페이스 2개", ACADEMY_NAME,
-                OWNER_LOGIN_ID, PASSWORD);
+        return passages;
     }
 
     private User user(String loginId, String name, Academy academy, UserRole role) {

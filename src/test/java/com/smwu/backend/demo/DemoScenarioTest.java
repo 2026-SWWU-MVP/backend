@@ -134,6 +134,75 @@ class DemoScenarioTest {
                 .andExpect(jsonPath("$.summary.latestWorksheet.id").value(worksheet));
     }
 
+    @Test
+    void 더미_데이터로_모든_화면에_데이터가_있다() throws Exception {
+        // #62: 프론트에 기출·프로필 화면이 없어도 화면 개발·시연을 할 수 있도록 끝까지 진행된 데이터를 넣어 둔다
+        long owner = login(DemoDataSeeder.OWNER_LOGIN_ID);
+        String cards = as(owner, get("/api/workspaces")).andReturn().getResponse().getContentAsString();
+        long workspace = JsonPath.<List<Number>>read(cards, "$[?(@.title == '압구정고 1학년')].id").get(0).longValue();
+        long inReview = JsonPath.<List<Number>>read(cards, "$[?(@.title == '현대고 2학년')].id").get(0).longValue();
+
+        // 대시보드 카드
+        as(owner, get("/api/workspaces/{id}", workspace))
+                .andExpect(jsonPath("$.summary.pastExamCount").value(3))
+                .andExpect(jsonPath("$.summary.profileStatus").value("CONFIRMED"))
+                .andExpect(jsonPath("$.summary.confirmedProfileVersion").value(2))
+                .andExpect(jsonPath("$.summary.latestWorksheet.title").value("압구정고1 2과 서술형 대비"));
+        as(owner, get("/api/workspaces/{id}", inReview)).andExpect(jsonPath("$.summary.profileStatus").value("DRAFT"));
+
+        // 기출 → 추출 결과
+        String exams = as(owner, get("/api/workspaces/{id}/past-exams", workspace)).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(exams, "$[*].status")).containsOnly("EXTRACTED").hasSize(3);
+        long exam = ((Number) JsonPath.read(exams, "$[0].id")).longValue();
+        as(owner, get("/api/past-exams/{id}/questions", exam)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.passages.length()").value(2));
+
+        // 확정 프로필: 기출 근거가 연결된 규칙
+        long profile = id(as(owner, get("/api/workspaces/{id}/profiles/confirmed", workspace))
+                .andExpect(jsonPath("$.version").value(2))
+                .andExpect(jsonPath("$.typeMixPerPassage.SUMMARY_BLANK").value(1))
+                .andExpect(jsonPath("$.typeMixPerPassage.SENTENCE_ORDER").value(1))
+                .andExpect(jsonPath("$.typeMixPerPassage.GRAMMAR_FIX").value(1))
+                .andExpect(jsonPath("$.stats.examCount").value(3))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        as(owner, get("/api/workspaces/{id}/profiles", workspace)).andExpect(jsonPath("$.length()").value(2));
+
+        // 학교 DB: 우리 기출 3회분 + 다른 학원 1회분
+        as(owner, get("/api/workspaces/{id}/school-trends", workspace))
+                .andExpect(jsonPath("$.examCount").value(4))
+                .andExpect(jsonPath("$.contributorCount").value(2));
+
+        // 생성 작업 2개 → 검수 통계 → 시험지
+        String jobs = as(owner, get("/api/workspaces/{id}/generation-jobs", workspace)).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(jobs, "$[*].status")).containsOnly("COMPLETED").hasSize(2);
+        String stats = as(owner, get("/api/workspaces/{id}/review-stats", workspace)).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Integer>read(stats, "$.total.generated")).isEqualTo(8);
+        assertThat(JsonPath.<Integer>read(stats, "$.total.accepted")).isEqualTo(5);
+        assertThat(JsonPath.<Integer>read(stats, "$.total.edited")).isEqualTo(1);
+        String accepted = as(owner, get("/api/workspaces/{id}/problems?reviewStatus=ACCEPTED", workspace))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(accepted, "$[*].validationStatus")).containsOnly("PASSED");
+        String worksheets = as(owner, get("/api/workspaces/{id}/worksheets", workspace)).andReturn().getResponse().getContentAsString();
+        long worksheet = ((Number) JsonPath.read(worksheets, "$[0].id")).longValue();
+        as(owner, get("/api/worksheets/{id}", worksheet))
+                .andExpect(jsonPath("$.problemCount").value(4))
+                .andExpect(jsonPath("$.sections.length()").value(2));
+        as(owner, get("/api/worksheets/{id}/pdf", worksheet)).andExpect(status().isOk());
+
+        // 확정 프로필로 바로 새로 생성할 수 있다 (Mock LLM)
+        String materials = as(owner, get("/api/workspaces/{id}/materials", workspace)).andReturn().getResponse().getContentAsString();
+        long material = ((Number) JsonPath.read(materials, "$[0].id")).longValue();
+        List<Number> passages = JsonPath.read(as(owner, get("/api/materials/{id}/passages", material))
+                .andReturn().getResponse().getContentAsString(), "$[*].id");
+        long job = id(as(owner, post("/api/workspaces/{id}/generation-jobs", workspace).contentType(MediaType.APPLICATION_JSON)
+                        .content(JsonMapper.builder().build().writeValueAsString(Map.of("profileId", profile, "passageIds", passages))))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString(), "$.id");
+        waitFor(owner, "/api/generation-jobs/" + job, "COMPLETED");
+        String problems = as(owner, get("/api/generation-jobs/{id}/problems", job)).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(problems, "$[*].type")).hasSize(6);
+        assertThat(JsonPath.<List<Number>>read(problems, "$[?(@.validationStatus == 'PASSED')].id")).isNotEmpty();
+    }
+
     private long login(String loginId) throws Exception {
         return id(mockMvc.perform(post("/api/auth/login").header(TestUserMockMvcCustomizer.ANONYMOUS, "1")
                         .contentType(MediaType.APPLICATION_JSON)
