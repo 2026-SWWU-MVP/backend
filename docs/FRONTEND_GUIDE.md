@@ -18,6 +18,13 @@ SPRING_PROFILES_ACTIVE=h2 ./gradlew bootRun
 ```
 
 ```bash
+# 화면 개발 추천: 위 + 더미 데이터 (모든 화면에 데이터가 들어 있음, 로그인 demo / 1234)
+SPRING_PROFILES_ACTIVE=h2,demo ./gradlew bootRun
+```
+
+더미 데이터의 **압구정고 1학년**은 기출·확정 프로필·생성 문항·시험지까지 들어 있어 어느 화면이든 바로 붙일 수 있고, **현대고 2학년**은 프로필 초안 상태입니다. 자세한 내용은 [DEMO.md](DEMO.md). 이미 `storage/h2`에 데이터가 있으면 더미 데이터가 만들어지지 않으니 폴더를 지우고 실행합니다.
+
+```bash
 # PostgreSQL(swmvp DB)이 있을 때
 ./gradlew bootRun
 ```
@@ -29,11 +36,11 @@ SPRING_PROFILES_ACTIVE=h2 ./gradlew bootRun
 
 ### Mock 모드에서 알아둘 것
 
-Mock 응답은 특정 지문에 맞춰져 있어서, 시험범위 텍스트에 아래 두 지문을 넣으면 **첫 지문의 요약문 빈칸**과 **둘째 지문의 어구 배열**이 `PASSED`로 나옵니다. 나머지 조합은 규칙 검증에 걸려 `FAILED` 문항이 되므로, 화면의 실패 표시를 확인할 때 쓰면 됩니다.
+Mock 응답은 특정 지문에 맞춰져 있어서, 시험범위 텍스트에 아래 두 지문을 넣으면 **첫 지문의 요약문 빈칸·어법 오류 수정**과 **둘째 지문의 어구 배열**이 `PASSED`로 나옵니다. 나머지 조합은 규칙 검증에 걸려 `FAILED` 문항이 되므로, 화면의 실패 표시를 확인할 때 쓰면 됩니다.
 
 ```
 # Bringing New Life to Old Cities
-As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. When this happens, a collaboration between the local government and citizens is an effective way to revitalize the area.
+As cities age, neighborhoods can become old and lifeless, which may cause citizens to move away. When this happens, a collaboration between the local government and citizens is an effective way to revitalize the area. Let's take a look at two projects in the Netherlands to find out what successful urban revitalization looks like.
 ---
 # Crime and Budget
 For years, the neighborhood was known for its high crime rates. However, having a limited budget, the government was unable to do so and had to come up with a new plan.
