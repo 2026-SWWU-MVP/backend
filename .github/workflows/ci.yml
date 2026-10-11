@@ -92,6 +92,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Check GitHub repository IDs
+        run: |
+          echo "Owner ID: ${{ github.repository_owner_id }}"
+          echo "Repository ID: ${{ github.repository_id }}"
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
