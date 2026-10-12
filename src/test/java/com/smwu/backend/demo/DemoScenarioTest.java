@@ -1,8 +1,11 @@
 package com.smwu.backend.demo;
 
 import com.jayway.jsonpath.JsonPath;
+import com.smwu.backend.academy.domain.InviteCode;
+import com.smwu.backend.academy.repository.InviteCodeRepository;
 import com.smwu.backend.document.TestPdfs;
 import com.smwu.backend.support.TestUserMockMvcCustomizer;
+import com.smwu.backend.user.repository.UserRepository;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Test;
@@ -40,6 +43,15 @@ class DemoScenarioTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private DemoDataSeeder seeder;
+
+    @Autowired
+    private InviteCodeRepository inviteCodeRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Test
     void 시연_시나리오_1부터_7까지() throws Exception {
@@ -142,6 +154,11 @@ class DemoScenarioTest {
         long workspace = JsonPath.<List<Number>>read(cards, "$[?(@.title == '압구정고 1학년')].id").get(0).longValue();
         long inReview = JsonPath.<List<Number>>read(cards, "$[?(@.title == '현대고 2학년')].id").get(0).longValue();
 
+        // 학원 관리: 상태별 초대 코드 (#66)
+        String invites = as(owner, get("/api/academy/invites")).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(invites, "$[*].status")).contains("ACTIVE", "USED", "EXPIRED", "CANCELED");
+        assertThat(JsonPath.<List<String>>read(invites, "$[?(@.code == 'WELCM3')].usedByName")).containsExactly("박강사");
+
         // 대시보드 카드
         as(owner, get("/api/workspaces/{id}", workspace))
                 .andExpect(jsonPath("$.summary.pastExamCount").value(3))
@@ -201,6 +218,20 @@ class DemoScenarioTest {
         String problems = as(owner, get("/api/generation-jobs/{id}/problems", job)).andReturn().getResponse().getContentAsString();
         assertThat(JsonPath.<List<String>>read(problems, "$[*].type")).hasSize(6);
         assertThat(JsonPath.<List<Number>>read(problems, "$[?(@.validationStatus == 'PASSED')].id")).isNotEmpty();
+    }
+
+    @Test
+    void 초대_코드가_없던_기존_데모_DB에는_다시_실행할_때_채운다() {
+        // #66: 자동 배포는 DB를 비우지 않으므로, 이미 데모 데이터가 있는 서버에도 초대 코드가 들어가야 한다
+        Long academyId = userRepository.findByLoginId(DemoDataSeeder.OWNER_LOGIN_ID).orElseThrow().getAcademyId();
+        inviteCodeRepository.deleteAll(inviteCodeRepository.findByAcademyIdOrderByIdDesc(academyId));
+
+        seeder.seed();
+        assertThat(inviteCodeRepository.findByAcademyIdOrderByIdDesc(academyId)).extracting(InviteCode::getCode)
+                .containsExactlyInAnyOrder("FNRD26", "WELCM3", "XPRD47", "CNCL58");
+
+        seeder.seed();
+        assertThat(inviteCodeRepository.findByAcademyIdOrderByIdDesc(academyId)).hasSize(4);
     }
 
     private long login(String loginId) throws Exception {

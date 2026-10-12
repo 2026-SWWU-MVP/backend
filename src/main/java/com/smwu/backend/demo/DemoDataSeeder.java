@@ -2,7 +2,9 @@ package com.smwu.backend.demo;
 
 import com.smwu.backend.academy.domain.Academy;
 import com.smwu.backend.academy.domain.AcademyPlan;
+import com.smwu.backend.academy.domain.InviteCode;
 import com.smwu.backend.academy.repository.AcademyRepository;
+import com.smwu.backend.academy.repository.InviteCodeRepository;
 import com.smwu.backend.common.storage.FileStorage;
 import com.smwu.backend.material.domain.Material;
 import com.smwu.backend.material.domain.Passage;
@@ -38,6 +40,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +48,7 @@ import java.util.List;
  * 시연용 데이터 (#24). {@code demo} 프로필로 실행하면 한 번만 만든다 (원장 계정이 이미 있으면 건너뜀).
  * <ul>
  *   <li>학원 "파인로드영어" (로고 포함), 원장 demo, 강사 teacher1·teacher2 — 비밀번호는 모두 {@link #PASSWORD}</li>
+ *   <li>초대 코드 4개: 사용 가능 FNRD26 · 사용됨 WELCM3(박강사) · 만료 XPRD47 · 취소 CNCL58</li>
  *   <li>워크스페이스 건대부고 1학년, 압구정고 1학년</li>
  *   <li>건대부고 1학년 시험범위 텍스트 "교과서 2과" (지문 2개)</li>
  * </ul>
@@ -79,6 +83,7 @@ public class DemoDataSeeder {
 
     private final UserRepository userRepository;
     private final AcademyRepository academyRepository;
+    private final InviteCodeRepository inviteCodeRepository;
     private final SchoolRepository schoolRepository;
     private final WorkspaceRepository workspaceRepository;
     private final MaterialRepository materialRepository;
@@ -93,6 +98,7 @@ public class DemoDataSeeder {
     public void seed() {
         if (userRepository.existsByLoginId(OWNER_LOGIN_ID)) {
             log.info("데모 데이터가 이미 있어 건너뜀 (원장 {})", OWNER_LOGIN_ID);
+            addInvitesIfMissing();
             return;
         }
         Academy academy = academyRepository.save(new Academy(ACADEMY_NAME, AcademyPlan.BASIC));
@@ -101,7 +107,8 @@ public class DemoDataSeeder {
 
         User owner = user(OWNER_LOGIN_ID, "김원장", academy, UserRole.OWNER);
         User teacher1 = user("teacher1", "이강사", academy, UserRole.TEACHER);
-        user("teacher2", "박강사", academy, UserRole.TEACHER);
+        User teacher2 = user("teacher2", "박강사", academy, UserRole.TEACHER);
+        invites(academy, owner, teacher2);
 
         School konkuk = school("건국대학교사범대학부속고등학교", "서울 광진구", List.of("건대부고", "건국대부고"));
         School apgujeong = school("압구정고등학교", "서울 강남구", List.of("압구정고"));
@@ -121,6 +128,32 @@ public class DemoDataSeeder {
         sampleData.inReview(inReview, teacher1);
         log.info("데모 데이터 생성: 학원 {}, 원장 {} / 강사 teacher1, teacher2 (비밀번호 {}), 워크스페이스 3개 (더미 데이터: 압구정고 1학년 완료, 현대고 2학년 검토 중)", ACADEMY_NAME,
                 OWNER_LOGIN_ID, PASSWORD);
+    }
+
+    /** 초대 코드(#66)보다 먼저 만든 데모 DB에도 초기화 없이 초대 코드를 채운다 (자동 배포는 DB를 비우지 않음) */
+    private void addInvitesIfMissing() {
+        User owner = userRepository.findByLoginId(OWNER_LOGIN_ID).orElseThrow();
+        Long academyId = owner.getAcademyId();
+        if (academyId == null || !inviteCodeRepository.findByAcademyIdOrderByIdDesc(academyId).isEmpty()) {
+            return;
+        }
+        userRepository.findByLoginId("teacher2").ifPresent(teacher2 -> {
+            invites(academyRepository.findById(academyId).orElseThrow(), owner, teacher2);
+            log.info("기존 데모 데이터에 초대 코드 4개 추가");
+        });
+    }
+
+    /** 학원 관리 화면용 초대 코드: 사용 가능 · 사용됨(박강사) · 만료 · 취소 (#66) */
+    private void invites(Academy academy, User owner, User usedBy) {
+        LocalDateTime now = LocalDateTime.now();
+        inviteCodeRepository.save(new InviteCode(academy.getId(), "FNRD26", owner.getId(), now));
+        InviteCode used = new InviteCode(academy.getId(), "WELCM3", owner.getId(), now.minusDays(3));
+        used.use(usedBy.getId(), now.minusDays(2));
+        inviteCodeRepository.save(used);
+        inviteCodeRepository.save(new InviteCode(academy.getId(), "XPRD47", owner.getId(), now.minusDays(10)));
+        InviteCode canceled = new InviteCode(academy.getId(), "CNCL58", owner.getId(), now.minusDays(1));
+        canceled.cancel();
+        inviteCodeRepository.save(canceled);
     }
 
     private List<Passage> textbook(Workspace workspace, User owner) {
