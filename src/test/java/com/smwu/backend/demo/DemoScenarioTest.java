@@ -2,6 +2,7 @@ package com.smwu.backend.demo;
 
 import com.jayway.jsonpath.JsonPath;
 import com.smwu.backend.academy.domain.InviteCode;
+import com.smwu.backend.academy.repository.AcademyRepository;
 import com.smwu.backend.academy.repository.InviteCodeRepository;
 import com.smwu.backend.document.TestPdfs;
 import com.smwu.backend.support.TestUserMockMvcCustomizer;
@@ -53,12 +54,15 @@ class DemoScenarioTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private AcademyRepository academyRepository;
+
     @Test
     void 시연_시나리오_1부터_7까지() throws Exception {
         // 1. 원장 로그인 → 로고 확인 → 초대 코드 발급
         long owner = login(DemoDataSeeder.OWNER_LOGIN_ID);
         as(owner, get("/api/academy"))
-                .andExpect(jsonPath("$.name").value("파인로드영어"))
+                .andExpect(jsonPath("$.name").value(DemoDataSeeder.ACADEMY_NAME))
                 .andExpect(jsonPath("$.hasLogo").value(true))
                 .andExpect(jsonPath("$.teacherCount").value(2));
         String code = JsonPath.read(as(owner, post("/api/academy/invites")).andExpect(status().isCreated())
@@ -218,6 +222,29 @@ class DemoScenarioTest {
         String problems = as(owner, get("/api/generation-jobs/{id}/problems", job)).andReturn().getResponse().getContentAsString();
         assertThat(JsonPath.<List<String>>read(problems, "$[*].type")).hasSize(6);
         assertThat(JsonPath.<List<Number>>read(problems, "$[?(@.validationStatus == 'PASSED')].id")).isNotEmpty();
+    }
+
+    @Test
+    void 예전_이름의_데모_학원은_다시_실행할_때_새_이름과_로고로_바뀐다() {
+        // #70: 자동 배포 서버처럼 이미 데모 데이터가 있는 DB도 초기화 없이 바뀌어야 한다
+        Long academyId = userRepository.findByLoginId(DemoDataSeeder.OWNER_LOGIN_ID).orElseThrow().getAcademyId();
+        var academy = academyRepository.findById(academyId).orElseThrow();
+        academy.rename(DemoDataSeeder.LEGACY_ACADEMY_NAME);
+        academyRepository.saveAndFlush(academy);
+
+        seeder.seed();
+        var renamed = academyRepository.findById(academyId).orElseThrow();
+        assertThat(renamed.getName()).isEqualTo(DemoDataSeeder.ACADEMY_NAME);
+        assertThat(renamed.hasLogo()).isTrue();
+
+        // 강사가 직접 바꾼 이름은 건드리지 않는다
+        renamed.rename("우리 학원");
+        academyRepository.saveAndFlush(renamed);
+        seeder.seed();
+        assertThat(academyRepository.findById(academyId).orElseThrow().getName()).isEqualTo("우리 학원");
+        renamed = academyRepository.findById(academyId).orElseThrow();
+        renamed.rename(DemoDataSeeder.ACADEMY_NAME);
+        academyRepository.saveAndFlush(renamed);
     }
 
     @Test
