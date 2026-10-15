@@ -71,7 +71,7 @@ class ProfileReviewApiTest {
                 .andExpect(jsonPath("$.typeMixPerPassage.SUMMARY_BLANK").value(1))
                 .andExpect(jsonPath("$.typeMixPerPassage.SENTENCE_ORDER").value(2))
                 .andExpect(jsonPath("$.changeSummary", hasItems(
-                        "v1에서 강사 의견 반영로 만든 버전입니다.",
+                        "v1에서 강사 의견 반영으로 만든 버전입니다.",
                         "강사 의견 추가: \"학생들 말로는 이번 서술형은 어구 배열 위주로 낸다고 하심\" (다음 시험에도 적용)",
                         "규칙 추가 [강사]: 이번 시험 서술형은 어구 배열 위주로 출제된다.",
                         "지문당 유형 구성: 요약문 빈칸 2 → 1, 어구 배열 1 → 2")))
