@@ -175,7 +175,7 @@ public class ProfileRevisionService {
             int nextVersion = profileRepository.findTopByWorkspaceIdOrderByVersionDesc(base.getWorkspaceId())
                     .map(p -> p.getVersion() + 1).orElse(1);
             List<String> summary = new ArrayList<>();
-            summary.add("v" + base.getVersion() + "에서 " + originLabel(origin) + "로 만든 버전입니다.");
+            summary.add("v" + base.getVersion() + "에서 " + originWithParticle(origin) + " 만든 버전입니다.");
             summary.addAll(changes);
             return profileRepository.save(base.revise(nextVersion, origin, rules, typeMix, notes, examples, summary,
                     llmModel, CurrentUserContext.userIdOrNull()));
@@ -184,12 +184,13 @@ public class ProfileRevisionService {
         return queryService.get(saved.getId());
     }
 
-    private static String originLabel(ProfileOrigin origin) {
+    /** 받침에 맞춘 조사까지 붙인 출처 (예: 직접 수정으로, AI 재검토로) */
+    private static String originWithParticle(ProfileOrigin origin) {
         return switch (origin) {
-            case AI_RECHECK -> "AI 재검토";
-            case TEACHER_FEEDBACK -> "강사 의견 반영";
-            case MANUAL_EDIT -> "직접 수정";
-            case INITIAL_ANALYSIS -> "기출 분석";
+            case AI_RECHECK -> "AI 재검토로";
+            case TEACHER_FEEDBACK -> "강사 의견 반영으로";
+            case MANUAL_EDIT -> "직접 수정으로";
+            case INITIAL_ANALYSIS -> "기출 분석으로";
         };
     }
 }
