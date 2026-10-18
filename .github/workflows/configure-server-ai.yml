@@ -1,0 +1,49 @@
+name: Configure deployed AI
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Read configuration or apply the approved real AI configuration
+        type: choice
+        options: [inspect, apply]
+        default: inspect
+        required: true
+      model:
+        description: Existing verified project model
+        type: string
+        default: gpt-5.6-terra
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: configure-deployed-ai
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: Inspect configuration
+        if: inputs.operation == 'inspect'
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+        run: python3 .github/scripts/manage_server_ai.py inspect
+      - name: Apply approved AI configuration and restart backend
+        if: inputs.operation == 'apply'
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          TESTFIT_LLM_API_KEY: ${{ secrets.TESTFIT_LLM_API_KEY }}
+          TESTFIT_LLM_MODEL: ${{ inputs.model }}
+        run: python3 .github/scripts/manage_server_ai.py apply
