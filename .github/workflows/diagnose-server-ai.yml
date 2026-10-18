@@ -1,0 +1,68 @@
+name: Diagnose deployed AI configuration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Read AI configuration from running backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Use existing deployment role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      - name: Inspect non-secret AI settings through existing SSM access
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$INSTANCE_ID"
+          cat > /tmp/inspect-ai.sh <<'SCRIPT'
+          #!/bin/sh
+          set -eu
+          # Find only the backend image configured in this repository's CI.
+          ids=$(docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^ghcr[.]io\/2026-swwu-mvp\/backend(:|@)/ { print $1 }')
+          count=$(printf '%s\n' "$ids" | awk 'NF { n++ } END { print n+0 }')
+          if [ "$count" -ne 1 ]; then
+            echo 'Expected exactly one running backend container; no further inspection performed.'
+            exit 1
+          fi
+          cid=$ids
+          docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$cid" | awk -F= '
+            $1 == "LLM_PROVIDER" { print "LLM_PROVIDER=" substr($0, index($0,"=")+1); provider=1 }
+            $1 == "LLM_MODEL" { print "LLM_MODEL=" substr($0, index($0,"=")+1); model=1 }
+            $1 == "LLM_API_KEY" { print "LLM_API_KEY_PRESENT=" (length(substr($0,index($0,"=")+1)) > 0 ? "yes" : "no"); key=1 }
+            $1 == "LLM_BASE_URL" { print "LLM_BASE_URL_CONFIGURED=yes"; base=1 }
+            $1 == "SPRING_APPLICATION_JSON" { print "SPRING_APPLICATION_JSON_PRESENT=yes" }
+            END {
+              if (!provider) print "LLM_PROVIDER=unset (application default: mock)"
+              if (!model) print "LLM_MODEL=unset"
+              if (!key) print "LLM_API_KEY_PRESENT=no"
+              if (!base) print "LLM_BASE_URL_CONFIGURED=no (application default applies)"
+            }'
+          # A mounted .env can override application defaults; report existence only.
+          docker exec "$cid" sh -c 'if [ -f /app/.env ]; then echo APP_DOTENV_PRESENT=yes; else echo APP_DOTENV_PRESENT=no; fi'
+          echo 'Inspection finished. No values or files were changed.'
+          SCRIPT
+          jq -Rs '{commands: [.], executionTimeout: ["120"]}' /tmp/inspect-ai.sh > /tmp/ssm-parameters.json
+          command_id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --parameters file:///tmp/ssm-parameters.json \
+            --query Command.CommandId --output text)
+          wait_result=0
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID" || wait_result=$?
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}'
+          exit "$wait_result"
