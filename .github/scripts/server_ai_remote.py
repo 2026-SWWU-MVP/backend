@@ -16,6 +16,7 @@ import urllib.request
 DEPLOY = Path("/usr/local/bin/deploy-testfit.sh")
 CONFIG = Path("/etc/testfit-ai/application.properties")
 DESTINATION = "/app/config/application.properties"
+# The deployment script has no shebang; CI runs it through the SSM shell, so run it the same way.
 request = json.loads(base64.b64decode(sys.argv[1]))
 
 
@@ -132,7 +133,7 @@ elif operation == "apply":
         try:
             atomic_write(CONFIG, content, 0o640, 0, group_id)
             atomic_write(DEPLOY, updated, stat.S_IMODE(original_stat.st_mode), original_stat.st_uid, original_stat.st_gid)
-            deployment = subprocess.run([str(DEPLOY)], capture_output=True, timeout=300)
+            deployment = subprocess.run(["/bin/sh", str(DEPLOY)], capture_output=True, timeout=300)
             if deployment.returncode:
                 raise RuntimeError("Backend restart failed; captured output was not printed to protect credentials")
             healthy = False
@@ -157,7 +158,7 @@ elif operation == "apply":
                 CONFIG.unlink(missing_ok=True)
             else:
                 atomic_write(CONFIG, original_config, stat.S_IMODE(original_config_stat.st_mode), original_config_stat.st_uid, original_config_stat.st_gid)
-            rollback = subprocess.run([str(DEPLOY)], capture_output=True, timeout=300)
+            rollback = subprocess.run(["/bin/sh", str(DEPLOY)], capture_output=True, timeout=300)
             print(json.dumps({"status": "rolled_back", "restart_succeeded": rollback.returncode == 0}))
             raise RuntimeError("AI configuration was not applied; previous configuration restored") from None
     finally:
